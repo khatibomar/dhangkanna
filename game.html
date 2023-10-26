@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Guess Character</title>
+        <link rel="stylesheet" href="/static/style.css">
+    </head>
+
+    <body>
+        <h1>Guess Character</h1>
+        <div id="container">
+            <p>Guess the character:</p>
+            <div id="characterDisplay"></div>
+            <p>Incorrect Guesses: <span id="incorrectGuesses"></span></p>
+            <p>Chances Left: <span id="chancesLeft">6</span></p>
+            <p>Enter a letter: <input type="text" id="letterInput" maxlength="1"></p>
+            <button id="guessButton">Guess</button>
+        </div>
+
+        <div id="gameMessage"></div>
+
+        <img id="kannaImage" src="static/kanna.gif" alt="Kanna Kamui">
+
+        <script src="/static/game.js"></script>
+    </body>
+</html>
