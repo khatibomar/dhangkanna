@@ -73,7 +73,7 @@ function guessLetter() {
     const letter = letterInput.value.toLowerCase();
 
     if (letter.length !== 1 || !/^[a-z]$/.test(letter)) {
-        showGameState('Please enter a valid single letter or space.', 'orange');
+        showGameState('Please enter a valid single letter.', 'orange');
         letterInput.value = '';
         return;
     }
