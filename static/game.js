@@ -79,7 +79,9 @@ function guessLetter() {
     }
 
     showGameState('', '');
-    if (characterNameArray.includes(letter)) {
+    if (incorrectGuesses.includes(letter) || guessedCharacter.includes(letter)) {
+        showGameState('You already guessed that letter.', 'orange');
+    } else if (characterNameArray.includes(letter)) {
         for (let i = 0; i < characterNameArray.length; i++) {
             if (characterNameArray[i] === letter) {
                 guessedCharacter[i] = letter;
