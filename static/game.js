@@ -26,6 +26,7 @@ function updateCharacterDisplay() {
 function checkWin() {
     if (guessedCharacter.join('') === characterName) {
         showGameState('Congratulations! You win!', '#f4afca');
+        kannaImage.src = 'static/kanna.gif';
         kannaImage.style.display = 'block';
         gameWon = true;
         letterInput.disabled = true;
