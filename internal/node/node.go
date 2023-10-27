@@ -7,6 +7,7 @@ import (
 	"github.com/khatibomar/dhangkanna/internal/state"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -18,9 +19,14 @@ type Node struct {
 	mutex          *sync.Mutex
 	clientConn     *websocket.Conn
 	logger         *log.Logger
-	receiveChannel chan struct{}
-	sendChannel    chan struct{}
+	receiveChannel chan SocketEvent
+	sendChannel    chan SocketEvent
 	clients        map[*websocket.Conn]bool
+}
+
+type SocketEvent struct {
+	Name    string `json:"name"`
+	Content any    `json:"content,omitempty"`
 }
 
 func New() *Node {
@@ -33,8 +39,8 @@ func New() *Node {
 		},
 		mutex:          &sync.Mutex{},
 		logger:         log.New(log.Writer(), "Node: ", log.LstdFlags),
-		receiveChannel: make(chan struct{}, 2),
-		sendChannel:    make(chan struct{}, 2),
+		receiveChannel: make(chan SocketEvent, 2),
+		sendChannel:    make(chan SocketEvent, 2),
 		clients:        make(map[*websocket.Conn]bool),
 	}
 }
@@ -55,8 +61,8 @@ func (n *Node) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	n.mutex.Lock()
 	n.clientConn = conn
-	n.sendGameState()
 	n.mutex.Unlock()
+	n.sendGameState()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -107,9 +113,11 @@ func (n *Node) sendMessages(ctx context.Context) {
 		case <-ctx.Done():
 			return
 
-		case <-n.sendChannel:
+		case e := <-n.sendChannel:
 			for client := range n.clients {
-				err := client.WriteJSON(n.state)
+				n.mutex.Lock()
+				err := client.WriteJSON(e)
+				n.mutex.Unlock()
 				if err != nil {
 					delete(n.clients, client)
 					n.logger.Println(err)
@@ -122,7 +130,10 @@ func (n *Node) sendMessages(ctx context.Context) {
 
 func (n *Node) handleNewLetter(letter string) {
 	n.state.NewGame = false
-
+	if !isValidLetter(letter) {
+		n.sendSocketEvent(SocketEvent{Name: "invalid_character"})
+		return
+	}
 	if !internal.Contains(n.state.GuessedCharacter, letter) && !internal.Contains(n.state.IncorrectGuesses, letter) {
 		if strings.Contains(n.state.CharacterName, letter) {
 			n.handleCorrectGuess(letter)
@@ -162,7 +173,18 @@ func (n *Node) handleRepeatedGuess(letter string) {
 }
 
 func (n *Node) sendGameState() {
-	n.sendChannel <- struct{}{}
+	n.sendSocketEvent(SocketEvent{Name: "state", Content: n.state})
+}
+
+func (n *Node) sendNotification(message string) {
+	n.sendSocketEvent(SocketEvent{Name: "notification", Content: message})
+}
+
+func (n *Node) sendSocketEvent(event SocketEvent) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	n.sendChannel <- event
 }
 
 func (n *Node) resetGame() {
@@ -172,4 +194,8 @@ func (n *Node) resetGame() {
 	n.state.ChancesLeft = 6
 	n.state.GameWon = false
 	n.state.NewGame = true
+}
+
+func isValidLetter(letter string) bool {
+	return len(letter) == 1 && regexp.MustCompile("^[a-z]$").MatchString(letter)
 }

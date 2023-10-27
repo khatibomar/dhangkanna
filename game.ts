@@ -8,6 +8,11 @@ type gameState = {
     newGame: Boolean
 }
 
+type socketEvent = {
+    name: String,
+    content: any
+}
+
 const characterDisplay = document.getElementById('characterDisplay');
 const kannaImage : HTMLImageElement = document.getElementById('kannaImage') as HTMLImageElement;
 
@@ -33,9 +38,21 @@ ws.onclose = (event) => {
 };
 
 ws.onmessage = (event) => {
-    const gameState : gameState = JSON.parse(event.data);
-    console.log(gameState);
-    updateGame(gameState);
+    const message : socketEvent = JSON.parse(event.data);
+    console.log(message);
+    switch (message.name) {
+        case "state":
+            console.log(message.content);
+            const state: gameState = message.content;
+            updateGame(state);
+            break;
+        case "invalid_character":
+            showGameState("Please enter a valid single letter.", 'orange');
+            letterInput.value = '';
+            break;
+        case "notification":
+            break;
+    }
 };
 
 function updateGame(state: gameState) {
@@ -94,19 +111,13 @@ function notifyResetGame() {
     ws.send(JSON.stringify({ restart: true }));
 }
 
-function showGameState(message, color) {
-    gameMessage.textContent = message;
-    gameMessage.style.color = color;
+function showGameState(message: String, color: String) {
+    gameMessage.textContent = message.toString();
+    gameMessage.style.color = color.toString();
 }
 
 function guessLetter() {
     const letter = letterInput.value.toLowerCase();
-
-    if (letter.length !== 1 || !/^[a-z]$/.test(letter)) {
-        showGameState('Please enter a valid single letter.', 'orange');
-        letterInput.value = '';
-        return;
-    }
 
     ws.send(JSON.stringify({ letter: letter }));
 
