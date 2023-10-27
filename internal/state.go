@@ -18,6 +18,7 @@ type State struct {
 	RepeatedGuess    string   `json:"repeatedGuess"`
 	ChancesLeft      int      `json:"chancesLeft"`
 	GameWon          bool     `json:"gameWon"`
+	NewGame          bool     `json:"newGame"`
 
 	upgrader       websocket.Upgrader
 	mutex          *sync.Mutex
@@ -25,6 +26,7 @@ type State struct {
 	logger         *log.Logger
 	receiveChannel chan struct{}
 	sendChannel    chan struct{}
+	clients        map[*websocket.Conn]bool
 }
 
 func New() *State {
@@ -42,6 +44,7 @@ func New() *State {
 		logger:         log.New(log.Writer(), "State: ", log.LstdFlags),
 		receiveChannel: make(chan struct{}, 2),
 		sendChannel:    make(chan struct{}, 2),
+		clients:        make(map[*websocket.Conn]bool),
 	}
 }
 
@@ -64,6 +67,8 @@ func (s *State) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+
+	s.clients[conn] = true
 
 	s.mutex.Lock()
 	s.clientConn = conn
@@ -96,6 +101,7 @@ func (s *State) receiveMessages(ctx context.Context) {
 
 			err := s.clientConn.ReadJSON(&msg)
 			if err != nil {
+				delete(s.clients, s.clientConn)
 				s.logger.Println(err)
 				return
 			}
@@ -105,15 +111,7 @@ func (s *State) receiveMessages(ctx context.Context) {
 				s.sendGameState()
 			} else if !s.GameWon {
 				letter := strings.ToLower(msg.Letter)
-				if !contains(s.GuessedCharacter, letter) && !contains(s.IncorrectGuesses, letter) {
-					if strings.Contains(s.CharacterName, letter) {
-						s.handleCorrectGuess(letter)
-					} else {
-						s.handleIncorrectGuess(letter)
-					}
-				} else {
-					s.handleRepeatedGuess(letter)
-				}
+				s.handleNewLetter(letter)
 				s.sendGameState()
 			}
 		}
@@ -127,12 +125,29 @@ func (s *State) sendMessages(ctx context.Context) {
 			return
 
 		case <-s.sendChannel:
-			err := s.clientConn.WriteJSON(s)
-			if err != nil {
-				s.logger.Println(err)
-				return
+			for client := range s.clients {
+				err := client.WriteJSON(s)
+				if err != nil {
+					delete(s.clients, client)
+					s.logger.Println(err)
+					return
+				}
 			}
 		}
+	}
+}
+
+func (s *State) handleNewLetter(letter string) {
+	s.NewGame = false
+
+	if !contains(s.GuessedCharacter, letter) && !contains(s.IncorrectGuesses, letter) {
+		if strings.Contains(s.CharacterName, letter) {
+			s.handleCorrectGuess(letter)
+		} else {
+			s.handleIncorrectGuess(letter)
+		}
+	} else {
+		s.handleRepeatedGuess(letter)
 	}
 }
 
@@ -173,4 +188,5 @@ func (s *State) resetGame() {
 	s.IncorrectGuesses = make([]string, 0)
 	s.ChancesLeft = 6
 	s.GameWon = false
+	s.NewGame = true
 }

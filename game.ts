@@ -4,7 +4,8 @@ type gameState = {
     incorrectGuesses: [],
     repeatedGuess: String,
     chancesLeft: Number,
-    gameWon: Boolean
+    gameWon: Boolean,
+    newGame: Boolean
 }
 
 const characterDisplay = document.getElementById('characterDisplay');
@@ -23,6 +24,14 @@ ws.onopen = () => {
     console.log('WebSocket connection established.');
 };
 
+ws.onclose = (event) => {
+    if (event.wasClean) {
+        console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+    } else {
+        console.error(`WebSocket connection closed unexpectedly. Code=${event.code}`);
+    }
+};
+
 ws.onmessage = (event) => {
     const gameState : gameState = JSON.parse(event.data);
     console.log(gameState);
@@ -39,6 +48,11 @@ function updateGame(state: gameState) {
 
     if(state.repeatedGuess) {
         showGameState(`You already picked ${state.repeatedGuess}.`, 'orange');
+    }
+
+    if(state.newGame) {
+        console.log(state.newGame);
+        resetGame();
     }
 }
 
@@ -73,7 +87,10 @@ function resetGame() {
     letterInput.disabled = false;
     guessButton.textContent = 'Guess';
     letterInput.value = '';
+    focusInput();
+}
 
+function notifyResetGame() {
     ws.send(JSON.stringify({ restart: true }));
 }
 
@@ -109,18 +126,14 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'r' || event.key === 'R') {
         if (document.activeElement !== letterInput) {
             event.preventDefault();
-            resetGame();
-            focusInput();
+            notifyResetGame();
         }
     }
 });
 
 guessButton.addEventListener('click', function () {
-    if (guessButton.textContent === 'Restart') {
-        resetGame();
-    } else {
-        guessLetter();
-    }
+    guessLetter();
 });
+
 document.addEventListener('mouseleave', focusInput);
 window.addEventListener('load', focusInput);
