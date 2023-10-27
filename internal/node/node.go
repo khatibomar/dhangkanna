@@ -21,7 +21,7 @@ type Node struct {
 	logger         *log.Logger
 	receiveChannel chan SocketEvent
 	sendChannel    chan SocketEvent
-	clients        map[*websocket.Conn]bool
+	clients        map[*websocket.Conn]struct{}
 }
 
 type SocketEvent struct {
@@ -41,7 +41,7 @@ func New() *Node {
 		logger:         log.New(log.Writer(), "Node: ", log.LstdFlags),
 		receiveChannel: make(chan SocketEvent, 2),
 		sendChannel:    make(chan SocketEvent, 2),
-		clients:        make(map[*websocket.Conn]bool),
+		clients:        make(map[*websocket.Conn]struct{}),
 	}
 }
 
@@ -57,9 +57,8 @@ func (n *Node) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	n.clients[conn] = true
-
 	n.mutex.Lock()
+	n.clients[conn] = struct{}{}
 	n.clientConn = conn
 	n.mutex.Unlock()
 	n.sendGameState()
