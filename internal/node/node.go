@@ -109,7 +109,7 @@ func (n *Node) sendMessages(ctx context.Context) {
 
 		case <-n.sendChannel:
 			for client := range n.clients {
-				err := client.WriteJSON(n)
+				err := client.WriteJSON(n.state)
 				if err != nil {
 					delete(n.clients, client)
 					n.logger.Println(err)

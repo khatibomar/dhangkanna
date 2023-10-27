@@ -18,7 +18,7 @@ const guessButton = document.getElementById('guessButton');
 
 const gameMessage = document.getElementById('gameMessage');
 
-const ws = new WebSocket('ws://localhost:4000/ws');
+const ws = new WebSocket(`ws://${location.host}/ws`);
 
 ws.onopen = () => {
     console.log('WebSocket connection established.');
