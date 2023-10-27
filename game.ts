@@ -65,6 +65,8 @@ function updateGame(state: gameState) {
 
     if(state.repeatedGuess) {
         showGameState(`You already picked ${state.repeatedGuess}.`, 'orange');
+    } else {
+        showGameState("", '');
     }
 
     if(state.newGame) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	state "github.com/khatibomar/dhangkanna/internal/node"
@@ -36,7 +37,10 @@ func serve(cfg serverConfig, serverLogger *log.Logger) error {
 		http.ServeFile(w, r, "game.html")
 	})
 
-	s := state.New()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := state.New(ctx)
 	http.HandleFunc("/ws", s.HandleWebSocket)
 
 	address := fmt.Sprintf(":%d", cfg.port)
