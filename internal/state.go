@@ -66,7 +66,11 @@ func (s *State) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		s.logger.Println(err)
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			s.logger.Fatalf("error while closing connection: %v\n", err)
+		}
+	}()
 
 	s.clients[conn] = true
 
