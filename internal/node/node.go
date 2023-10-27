@@ -72,6 +72,9 @@ func (n *Node) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-ctx.Done():
+		n.mutex.Lock()
+		delete(n.clients, conn)
+		n.mutex.Unlock()
 		return
 	}
 }
@@ -80,6 +83,9 @@ func (n *Node) receiveMessages(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			n.mutex.Lock()
+			delete(n.clients, n.clientConn)
+			n.mutex.Unlock()
 			return
 
 		default:
@@ -111,6 +117,9 @@ func (n *Node) sendMessages(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			n.mutex.Lock()
+			delete(n.clients, n.clientConn)
+			n.mutex.Unlock()
 			return
 
 		case e := <-n.sendChannel:
