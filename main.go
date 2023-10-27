@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	state "github.com/khatibomar/dhangkanna/internal"
+	state "github.com/khatibomar/dhangkanna/internal/node"
 	"log"
 	"net/http"
 	"os"
