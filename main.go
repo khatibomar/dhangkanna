@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	state "github.com/khatibomar/dhangkanna/internal"
 	"log"
 	"net/http"
 	"os"
@@ -34,6 +35,9 @@ func serve(cfg serverConfig, serverLogger *log.Logger) error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "game.html")
 	})
+
+	s := state.New()
+	http.HandleFunc("/ws", s.HandleWebSocket)
 
 	address := fmt.Sprintf(":%d", cfg.port)
 
