@@ -4,7 +4,7 @@ type gameState = {
     repeatedGuess: String,
     chancesLeft: Number,
     gameState: GameState,
-    notification: String
+    message: String
 }
 
 enum GameState {
@@ -60,21 +60,21 @@ ws.onmessage = (event) => {
 function updateGame(state: gameState) {
     switch (state.gameState) {
         case GameState.Won:
-            showGameState(state.notification, '#f4afca');
+            showGameState(state.message, '#f4afca');
             kannaImage.src = 'static/kanna.gif';
             kannaImage.style.display = 'block';
             letterInput.disabled = true;
             guessButton.textContent = 'Restart';
             break;
         case GameState.Lost:
-            showGameState(state.notification, '#ff978d');
+            showGameState(state.message, '#ff978d');
             letterInput.disabled = true;
             guessButton.textContent = 'Restart';
             kannaImage.src = 'static/sad_kanna.gif';
             kannaImage.style.display = 'block';
             break;
         case GameState.Going:
-            showGameState(state.notification, 'orange');
+            showGameState(state.message, 'orange');
             break;
         case GameState.Start:
             resetGame();

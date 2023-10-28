@@ -23,7 +23,7 @@ type State struct {
 	IncorrectGuesses []string `json:"incorrectGuesses"`
 	ChancesLeft      int      `json:"chancesLeft"`
 	GameState        int8     `json:"gameState"`
-	Notification     string   `json:"notification"`
+	Message          string   `json:"message"`
 
 	mutex sync.Mutex
 }
@@ -54,7 +54,7 @@ func (s *State) HandleNewLetter(letter string) {
 	defer s.mutex.Unlock()
 
 	s.GameState = GameGoing
-	s.Notification = ""
+	s.Message = ""
 	if !isValidLetter(letter) {
 		s.handleInvalidCharacter()
 	} else if !internal.Contains(s.GuessedCharacter, letter) && !internal.Contains(s.IncorrectGuesses, letter) {
@@ -76,7 +76,7 @@ func (s *State) handleCorrectGuess(letter string) {
 	}
 	if !internal.Contains(s.GuessedCharacter, "_") {
 		s.GameState = GameWon
-		s.Notification = "Congratulations! You win!"
+		s.Message = "Congratulations! You win!"
 	}
 }
 
@@ -85,16 +85,16 @@ func (s *State) handleIncorrectGuess(letter string) {
 	s.ChancesLeft--
 	if s.ChancesLeft == 0 {
 		s.GameState = GameLost
-		s.Notification = fmt.Sprintf("You lose! The character was: %s", characterName)
+		s.Message = fmt.Sprintf("You lose! The character was: %s", characterName)
 	}
 }
 
 func (s *State) handleRepeatedGuess(letter string) {
-	s.Notification = fmt.Sprintf("You already picked %s", letter)
+	s.Message = fmt.Sprintf("You already picked %s", letter)
 }
 
 func (s *State) handleInvalidCharacter() {
-	s.Notification = "Please enter a valid single letter."
+	s.Message = "Please enter a valid single letter."
 }
 
 func (s *State) Reset() {
