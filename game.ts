@@ -1,11 +1,17 @@
 type gameState = {
-    characterName: String,
     guessedCharacter: [" ", "_"],
     incorrectGuesses: [],
     repeatedGuess: String,
     chancesLeft: Number,
-    gameWon: Boolean,
-    newGame: Boolean
+    gameState: GameState,
+    notification: String
+}
+
+enum GameState {
+    Start,
+    Going,
+    Won,
+    Lost,
 }
 
 type socketEvent = {
@@ -46,39 +52,35 @@ ws.onmessage = (event) => {
             const state: gameState = message.content;
             updateGame(state);
             break;
-        case "invalid_character":
-            showGameState("Please enter a valid single letter.", 'orange');
-            letterInput.value = '';
-            break;
         case "notification":
             break;
     }
 };
 
 function updateGame(state: gameState) {
-    const win: Boolean = checkWin(state);
-    const loose: Boolean = checkLoss(state);
-
-    if(win) {
-        showGameState('Congratulations! You win!', '#f4afca');
-        kannaImage.src = 'static/kanna.gif';
-        kannaImage.style.display = 'block';
-        letterInput.disabled = true;
-        guessButton.textContent = 'Restart';
-    } else if(loose) {
-        showGameState('You lose! The character was: ' + state.characterName, '#ff978d');
-        letterInput.disabled = true;
-        guessButton.textContent = 'Restart';
-        kannaImage.src = 'static/sad_kanna.gif';
-        kannaImage.style.display = 'block';
-    } else if(state.repeatedGuess) {
-        showGameState(`You already picked ${state.repeatedGuess}.`, 'orange');
-    } else {
-        showGameState("", '');
-    }
-
-    if(state.newGame) {
-        resetGame();
+    switch (state.gameState) {
+        case GameState.Won:
+            showGameState(state.notification, '#f4afca');
+            kannaImage.src = 'static/kanna.gif';
+            kannaImage.style.display = 'block';
+            letterInput.disabled = true;
+            guessButton.textContent = 'Restart';
+            break;
+        case GameState.Lost:
+            showGameState(state.notification, '#ff978d');
+            letterInput.disabled = true;
+            guessButton.textContent = 'Restart';
+            kannaImage.src = 'static/sad_kanna.gif';
+            kannaImage.style.display = 'block';
+            break;
+        case GameState.Going:
+            showGameState(state.notification, 'orange');
+            break;
+        case GameState.Start:
+            resetGame();
+            break;
+        default:
+            break;
     }
 
     chancesLeftDisplay.textContent = state.chancesLeft.toString();
@@ -88,14 +90,6 @@ function updateGame(state: gameState) {
 
 function focusInput() {
     letterInput.focus();
-}
-
-function checkWin(state: gameState) : Boolean {
-    return state.guessedCharacter.join('') === state.characterName;
-}
-
-function checkLoss(state: gameState) : Boolean {
-    return state.chancesLeft === 0 && !state.gameWon;
 }
 
 function resetGame() {

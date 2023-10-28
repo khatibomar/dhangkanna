@@ -6,7 +6,6 @@ import (
 	"github.com/khatibomar/dhangkanna/internal/state"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 )
@@ -23,7 +22,7 @@ type Node struct {
 
 type SocketEvent struct {
 	Name    string `json:"name"`
-	Content any    `json:"content,omitempty"`
+	Content any    `json:"content"`
 }
 
 func New(ctx context.Context) *Node {
@@ -103,7 +102,7 @@ func (n *Node) receiveMessages(ctx context.Context, client *websocket.Conn) {
 
 			if msg.Restart {
 				n.resetGame()
-			} else if !n.state.GameWon {
+			} else {
 				letter := strings.ToLower(msg.Letter)
 				n.handleNewLetter(letter)
 			}
@@ -140,11 +139,6 @@ func (n *Node) sendMessages(ctx context.Context) {
 }
 
 func (n *Node) handleNewLetter(letter string) {
-	if !isValidLetter(letter) {
-		n.sendSocketEvent(SocketEvent{Name: "invalid_character"})
-		n.logger.Printf("Invalid letter received: %v", letter)
-		return
-	}
 	n.logger.Printf("Handling letter %v", letter)
 	n.state.HandleNewLetter(letter)
 	n.logger.Printf("Letter %v handled successfully", letter)
@@ -170,8 +164,4 @@ func (n *Node) resetGame() {
 	n.state.Reset()
 	n.sendGameState()
 	n.logger.Println("Game has been reset.")
-}
-
-func isValidLetter(letter string) bool {
-	return len(letter) == 1 && regexp.MustCompile("^[a-z]$").MatchString(letter)
 }

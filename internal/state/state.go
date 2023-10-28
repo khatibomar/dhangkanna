@@ -1,31 +1,39 @@
 package state
 
 import (
+	"fmt"
 	"github.com/khatibomar/dhangkanna/internal"
+	"regexp"
 	"strings"
 	"sync"
 )
 
 const characterName = "kanna kamui"
+const initialChances = 6
+
+const (
+	GameStart = iota
+	GameGoing
+	GameWon
+	GameLost
+)
 
 type State struct {
-	CharacterName    string   `json:"characterName"`
 	GuessedCharacter []string `json:"guessedCharacter"`
 	IncorrectGuesses []string `json:"incorrectGuesses"`
-	RepeatedGuess    string   `json:"repeatedGuess"`
 	ChancesLeft      int      `json:"chancesLeft"`
-	GameWon          bool     `json:"gameWon"`
-	NewGame          bool     `json:"newGame"`
+	GameState        int8     `json:"gameState"`
+	Notification     string   `json:"notification"`
 
 	mutex sync.Mutex
 }
 
 func New() *State {
 	return &State{
-		CharacterName:    characterName,
 		GuessedCharacter: initializeGuessedCharacter(characterName),
 		IncorrectGuesses: make([]string, 0),
-		ChancesLeft:      6,
+		ChancesLeft:      initialChances,
+		GameState:        GameStart,
 	}
 }
 
@@ -45,10 +53,12 @@ func (s *State) HandleNewLetter(letter string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.NewGame = false
-
-	if !internal.Contains(s.GuessedCharacter, letter) && !internal.Contains(s.IncorrectGuesses, letter) {
-		if strings.Contains(s.CharacterName, letter) {
+	s.GameState = GameGoing
+	s.Notification = ""
+	if !isValidLetter(letter) {
+		s.handleInvalidCharacter()
+	} else if !internal.Contains(s.GuessedCharacter, letter) && !internal.Contains(s.IncorrectGuesses, letter) {
+		if strings.Contains(characterName, letter) {
 			s.handleCorrectGuess(letter)
 		} else {
 			s.handleIncorrectGuess(letter)
@@ -59,40 +69,44 @@ func (s *State) HandleNewLetter(letter string) {
 }
 
 func (s *State) handleCorrectGuess(letter string) {
-	for i, char := range s.CharacterName {
+	for i, char := range characterName {
 		if string(char) == letter {
 			s.GuessedCharacter[i] = letter
 		}
 	}
 	if !internal.Contains(s.GuessedCharacter, "_") {
-		s.GameWon = true
+		s.GameState = GameWon
+		s.Notification = "Congratulations! You win!"
 	}
-
-	s.RepeatedGuess = ""
 }
 
 func (s *State) handleIncorrectGuess(letter string) {
 	s.IncorrectGuesses = append(s.IncorrectGuesses, letter)
 	s.ChancesLeft--
 	if s.ChancesLeft == 0 {
-		s.GameWon = false
+		s.GameState = GameLost
+		s.Notification = fmt.Sprintf("You lose! The character was: %s", characterName)
 	}
-
-	s.RepeatedGuess = ""
 }
 
 func (s *State) handleRepeatedGuess(letter string) {
-	s.RepeatedGuess = letter
+	s.Notification = fmt.Sprintf("You already picked %s", letter)
+}
+
+func (s *State) handleInvalidCharacter() {
+	s.Notification = "Please enter a valid single letter."
 }
 
 func (s *State) Reset() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.CharacterName = characterName
 	s.GuessedCharacter = initializeGuessedCharacter(characterName)
 	s.IncorrectGuesses = make([]string, 0)
-	s.ChancesLeft = 6
-	s.GameWon = false
-	s.NewGame = true
+	s.ChancesLeft = initialChances
+	s.GameState = GameStart
+}
+
+func isValidLetter(letter string) bool {
+	return len(letter) == 1 && regexp.MustCompile("^[a-z]$").MatchString(letter)
 }
