@@ -56,48 +56,46 @@ ws.onmessage = (event) => {
 };
 
 function updateGame(state: gameState) {
-    checkWin(state);
-    checkLoss(state);
+    const win: Boolean = checkWin(state);
+    const loose: Boolean = checkLoss(state);
 
-    chancesLeftDisplay.textContent = state.chancesLeft.toString();
-    characterDisplay.textContent = state.guessedCharacter.join('');
-    incorrectGuessesDisplay.textContent = state.incorrectGuesses.join(', ');
-
-    if(state.repeatedGuess) {
+    if(win) {
+        showGameState('Congratulations! You win!', '#f4afca');
+        kannaImage.src = 'static/kanna.gif';
+        kannaImage.style.display = 'block';
+        letterInput.disabled = true;
+        guessButton.textContent = 'Restart';
+    } else if(loose) {
+        showGameState('You lose! The character was: ' + state.characterName, '#ff978d');
+        letterInput.disabled = true;
+        guessButton.textContent = 'Restart';
+        kannaImage.src = 'static/sad_kanna.gif';
+        kannaImage.style.display = 'block';
+    } else if(state.repeatedGuess) {
         showGameState(`You already picked ${state.repeatedGuess}.`, 'orange');
     } else {
         showGameState("", '');
     }
 
     if(state.newGame) {
-        console.log(state.newGame);
         resetGame();
     }
+
+    chancesLeftDisplay.textContent = state.chancesLeft.toString();
+    characterDisplay.textContent = state.guessedCharacter.join('');
+    incorrectGuessesDisplay.textContent = state.incorrectGuesses.join(', ');
 }
 
 function focusInput() {
     letterInput.focus();
 }
 
-function checkWin(state: gameState) {
-    if (state.guessedCharacter.join('') === state.characterName) {
-        showGameState('Congratulations! You win!', '#f4afca');
-        kannaImage.src = 'static/kanna.gif';
-        kannaImage.style.display = 'block';
-
-        letterInput.disabled = true;
-        guessButton.textContent = 'Restart';
-    }
+function checkWin(state: gameState) : Boolean {
+    return state.guessedCharacter.join('') === state.characterName;
 }
 
-function checkLoss(state: gameState) {
-    if (state.chancesLeft === 0 && !state.gameWon) {
-        showGameState('You lose! The character was: ' + state.characterName, '#ff978d');
-        letterInput.disabled = true;
-        guessButton.textContent = 'Restart';
-        kannaImage.src = 'static/sad_kanna.gif';
-        kannaImage.style.display = 'block';
-    }
+function checkLoss(state: gameState) : Boolean {
+    return state.chancesLeft === 0 && !state.gameWon;
 }
 
 function resetGame() {
