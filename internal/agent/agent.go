@@ -17,14 +17,15 @@ import (
 type Agent struct {
 	Config
 
-	State        *state.State
-	server       *grpc.Server
-	discovery    *discovery.Discovery
-	replicator   *state.Replicator
-	logger       *log.Logger
-	shutdown     bool
-	shutdowns    chan struct{}
-	shutdownLock sync.Mutex
+	State            *state.State
+	UpdateSocketChan chan struct{}
+	server           *grpc.Server
+	discovery        *discovery.Discovery
+	replicator       *state.Replicator
+	logger           *log.Logger
+	shutdown         bool
+	shutdowns        chan struct{}
+	shutdownLock     sync.Mutex
 }
 
 type Config struct {
@@ -44,10 +45,11 @@ func (c Config) RPCAddr() (string, error) {
 
 func New(config Config) (*Agent, error) {
 	a := &Agent{
-		Config:    config,
-		State:     state.New(),
-		shutdowns: make(chan struct{}),
-		logger:    log.New(os.Stdout, "agent: ", log.LstdFlags),
+		Config:           config,
+		State:            state.New(),
+		UpdateSocketChan: make(chan struct{}),
+		shutdowns:        make(chan struct{}),
+		logger:           log.New(os.Stdout, "agent: ", log.LstdFlags),
 	}
 	setup := []func() error{
 		a.setupServer,
@@ -76,8 +78,9 @@ func (a *Agent) setupDiscovery() error {
 	}
 	client := api.NewStateServiceClient(conn)
 	a.replicator = &state.Replicator{
-		DialOptions: opts,
-		LocalServer: client,
+		DialOptions:      opts,
+		LocalServer:      client,
+		UpdateSocketChan: a.UpdateSocketChan,
 	}
 	a.discovery, err = discovery.New(a.replicator, discovery.Config{
 		NodeName: a.Config.NodeName,

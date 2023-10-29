@@ -50,6 +50,7 @@ func New(ctx context.Context, cfg agent.Config) (*Node, error) {
 		return nil, err
 	}
 
+	go n.updateFrontend(ctx, n.agent.UpdateSocketChan)
 	go n.sendMessages(ctx)
 	return n, nil
 }
@@ -89,6 +90,18 @@ func (n *Node) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}(conn)
 
 	n.logger.Printf("WebSocket connection handler started for %v", conn.RemoteAddr())
+}
+
+func (n *Node) updateFrontend(ctx context.Context, updateSocketChan chan struct{}) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-updateSocketChan:
+			n.logger.Println("received event to update frontend")
+			n.sendGameState()
+		}
+	}
 }
 
 func (n *Node) receiveMessages(ctx context.Context, client *websocket.Conn) {

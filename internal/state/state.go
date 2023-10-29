@@ -44,6 +44,7 @@ func (s *State) Update(
 	chancesLeft int,
 	gameState int8,
 	message string,
+	version int,
 ) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -53,7 +54,7 @@ func (s *State) Update(
 	s.ChancesLeft = chancesLeft
 	s.GameState = gameState
 	s.Message = message
-	s.Version++
+	s.Version = version
 }
 
 func (s *State) HandleNewLetter(letter string) {

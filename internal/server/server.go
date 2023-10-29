@@ -40,6 +40,14 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 }
 
 func (s *grpcServer) Send(_ context.Context, state *api.State) (*emptypb.Empty, error) {
+	if state.GuessedCharacter == nil {
+		state.GuessedCharacter = make([]string, 0)
+	}
+
+	if state.IncorrectGuesses == nil {
+		state.IncorrectGuesses = make([]string, 0)
+	}
+
 	if int(state.Version) > s.State.Version {
 		s.Config.State.Update(
 			state.GuessedCharacter,
@@ -47,6 +55,7 @@ func (s *grpcServer) Send(_ context.Context, state *api.State) (*emptypb.Empty, 
 			int(state.ChancesLeft),
 			int8(state.GameState),
 			state.Message,
+			int(state.Version),
 		)
 	}
 
@@ -54,12 +63,22 @@ func (s *grpcServer) Send(_ context.Context, state *api.State) (*emptypb.Empty, 
 }
 
 func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.State, error) {
-	return &api.State{
+	st := &api.State{
 		GuessedCharacter: s.State.GuessedCharacter,
 		IncorrectGuesses: s.State.IncorrectGuesses,
 		ChancesLeft:      int32(s.State.ChancesLeft),
 		GameState:        int32(s.State.GameState),
 		Message:          s.State.Message,
 		Version:          int32(s.State.Version),
-	}, nil
+	}
+
+	if st.GuessedCharacter == nil {
+		st.GuessedCharacter = make([]string, 0)
+	}
+
+	if st.IncorrectGuesses == nil {
+		st.IncorrectGuesses = make([]string, 0)
+	}
+
+	return st, nil
 }

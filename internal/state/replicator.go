@@ -12,13 +12,14 @@ import (
 )
 
 type Replicator struct {
-	DialOptions []grpc.DialOption
-	LocalServer api.StateServiceClient
-	logger      *log.Logger
-	mu          sync.Mutex
-	servers     map[string]struct{}
-	closed      bool
-	close       chan struct{}
+	DialOptions      []grpc.DialOption
+	LocalServer      api.StateServiceClient
+	UpdateSocketChan chan struct{}
+	logger           *log.Logger
+	mu               sync.Mutex
+	servers          map[string]struct{}
+	closed           bool
+	close            chan struct{}
 }
 
 func (r *Replicator) Join(name, addr string) error {
@@ -99,6 +100,7 @@ func (r *Replicator) replicate(addr string) {
 	if err != nil {
 		r.logError(err, "failed to send state to local server", addr)
 	}
+	r.UpdateSocketChan <- struct{}{}
 }
 
 func (r *Replicator) init() {
