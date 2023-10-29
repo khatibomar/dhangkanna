@@ -47,7 +47,7 @@ ws.onmessage = (event) => {
     const message : socketEvent = JSON.parse(event.data);
     console.log(message);
     switch (message.name) {
-        case "state":
+        case "game":
             console.log(message.content);
             const state: gameState = message.content;
             updateGame(state);
