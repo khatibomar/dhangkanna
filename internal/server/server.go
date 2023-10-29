@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	api "github.com/khatibomar/dhangkanna/api/v1"
-	"github.com/khatibomar/dhangkanna/internal/state"
+	"github.com/khatibomar/dhangkanna/internal/game"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -11,7 +11,7 @@ import (
 var _ api.StateServiceServer = (*grpcServer)(nil)
 
 type Config struct {
-	State *state.State
+	State *game.Game
 }
 
 type grpcServer struct {
@@ -39,16 +39,15 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 	return gsrv, nil
 }
 
-func (s *grpcServer) Send(_ context.Context, state *api.State) (*emptypb.Empty, error) {
-	if state.GuessedCharacter == nil {
-		state.GuessedCharacter = make([]string, 0)
-	}
-
-	if state.IncorrectGuesses == nil {
-		state.IncorrectGuesses = make([]string, 0)
-	}
-
+func (s *grpcServer) Send(_ context.Context, state *api.Game) (*emptypb.Empty, error) {
 	if int(state.Version) > s.State.Version {
+		if state.GuessedCharacter == nil {
+			state.GuessedCharacter = make([]string, 0)
+		}
+
+		if state.IncorrectGuesses == nil {
+			state.IncorrectGuesses = make([]string, 0)
+		}
 		s.Config.State.Update(
 			state.GuessedCharacter,
 			state.IncorrectGuesses,
@@ -62,8 +61,8 @@ func (s *grpcServer) Send(_ context.Context, state *api.State) (*emptypb.Empty, 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.State, error) {
-	st := &api.State{
+func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.Game, error) {
+	st := &api.Game{
 		GuessedCharacter: s.State.GuessedCharacter,
 		IncorrectGuesses: s.State.IncorrectGuesses,
 		ChancesLeft:      int32(s.State.ChancesLeft),

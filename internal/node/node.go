@@ -171,8 +171,8 @@ func (n *Node) handleNewLetter(letter string) {
 }
 
 func (n *Node) sendGameState() {
-	n.sendSocketEvent(SocketEvent{Name: "state", Content: n.agent.State})
-	n.logger.Println("Sending game state to all connected clients")
+	n.sendSocketEvent(SocketEvent{Name: "game", Content: n.agent.State})
+	n.logger.Println("Sending game game to all connected clients")
 }
 
 func (n *Node) sendNotification(message string) {

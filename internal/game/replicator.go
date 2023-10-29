@@ -1,4 +1,4 @@
-package state
+package game
 
 import (
 	"context"
@@ -98,7 +98,7 @@ func (r *Replicator) replicate(addr string) {
 
 	_, err = r.LocalServer.Send(ctx, s)
 	if err != nil {
-		r.logError(err, "failed to send state to local server", addr)
+		r.logError(err, "failed to send game to local server", addr)
 	}
 	r.UpdateSocketChan <- struct{}{}
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	api "github.com/khatibomar/dhangkanna/api/v1"
 	"github.com/khatibomar/dhangkanna/internal/discovery"
+	"github.com/khatibomar/dhangkanna/internal/game"
 	"github.com/khatibomar/dhangkanna/internal/server"
-	"github.com/khatibomar/dhangkanna/internal/state"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
@@ -17,11 +17,11 @@ import (
 type Agent struct {
 	Config
 
-	State            *state.State
+	State            *game.Game
 	UpdateSocketChan chan struct{}
 	server           *grpc.Server
 	discovery        *discovery.Discovery
-	replicator       *state.Replicator
+	replicator       *game.Replicator
 	logger           *log.Logger
 	shutdown         bool
 	shutdowns        chan struct{}
@@ -46,7 +46,7 @@ func (c Config) RPCAddr() (string, error) {
 func New(config Config) (*Agent, error) {
 	a := &Agent{
 		Config:           config,
-		State:            state.New(),
+		State:            game.New(),
 		UpdateSocketChan: make(chan struct{}),
 		shutdowns:        make(chan struct{}),
 		logger:           log.New(os.Stdout, "agent: ", log.LstdFlags),
@@ -77,7 +77,7 @@ func (a *Agent) setupDiscovery() error {
 		return err
 	}
 	client := api.NewStateServiceClient(conn)
-	a.replicator = &state.Replicator{
+	a.replicator = &game.Replicator{
 		DialOptions:      opts,
 		LocalServer:      client,
 		UpdateSocketChan: a.UpdateSocketChan,
