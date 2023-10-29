@@ -22,7 +22,7 @@ func main() {
 
 	flag.Parse()
 
-	serverLogger := log.New(os.Stdout, "Server: ", log.LstdFlags)
+	serverLogger := log.New(os.Stdout, "server: ", log.LstdFlags)
 
 	if err := serve(cfg, serverLogger); err != nil {
 		serverLogger.Fatalf("%v", err)
@@ -47,7 +47,7 @@ func serve(cfg serverConfig, serverLogger *log.Logger) error {
 	aCfg := agent.Config{
 		BindAddr:       fmt.Sprintf("127.0.0.1:%d", int(cfg.port+1)),
 		RPCPort:        int(cfg.port + 2),
-		NodeName:       fmt.Sprintf("node%d", &cfg.port),
+		NodeName:       fmt.Sprintf("potato%d", cfg.port),
 		StartJoinAddrs: sja,
 	}
 	s, err := node.New(ctx, aCfg)

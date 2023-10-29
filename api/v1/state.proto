@@ -10,6 +10,7 @@ message State {
   int32 chancesLeft = 3;
   int32 gameState = 4;
   string message = 5;
+  int32 version = 6;
 }
 
 service StateService {

@@ -47,7 +47,7 @@ func New(config Config) (*Agent, error) {
 		Config:    config,
 		State:     state.New(),
 		shutdowns: make(chan struct{}),
-		logger:    log.New(os.Stdout, "Agent", log.LstdFlags),
+		logger:    log.New(os.Stdout, "agent: ", log.LstdFlags),
 	}
 	setup := []func() error{
 		a.setupServer,
@@ -64,12 +64,14 @@ func New(config Config) (*Agent, error) {
 func (a *Agent) setupDiscovery() error {
 	rpcAddr, err := a.Config.RPCAddr()
 	if err != nil {
+		a.logger.Printf("Error getting RPC address: %v", err)
 		return err
 	}
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conn, err := grpc.Dial(rpcAddr, opts...)
 	if err != nil {
+		a.logger.Printf("Error dialing RPC: %v", err)
 		return err
 	}
 	client := api.NewStateServiceClient(conn)
@@ -85,6 +87,9 @@ func (a *Agent) setupDiscovery() error {
 		},
 		StartJoinsAddresses: a.Config.StartJoinAddrs,
 	})
+	if err != nil {
+		a.logger.Printf("Error creating Discovery: %v", err)
+	}
 	return err
 }
 
@@ -96,18 +101,22 @@ func (a *Agent) setupServer() error {
 	var err error
 	a.server, err = server.NewGRPCServer(serverConfig, opts...)
 	if err != nil {
+		a.logger.Printf("Error creating gRPC server: %v", err)
 		return err
 	}
 	rpcAddr, err := a.RPCAddr()
 	if err != nil {
+		a.logger.Printf("Error getting RPC address: %v", err)
 		return err
 	}
 	ln, err := net.Listen("tcp", rpcAddr)
 	if err != nil {
+		a.logger.Printf("Error listening on address: %v", err)
 		return err
 	}
 	go func() {
 		if err := a.server.Serve(ln); err != nil {
+			a.logger.Printf("Error serving gRPC server: %v", err)
 			_ = a.Shutdown()
 		}
 	}()
@@ -133,6 +142,7 @@ func (a *Agent) Shutdown() error {
 	}
 	for _, fn := range shutdown {
 		if err := fn(); err != nil {
+			a.logger.Printf("Error during shutdown: %v", err)
 			return err
 		}
 	}

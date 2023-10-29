@@ -24,8 +24,9 @@ type State struct {
 	ChancesLeft      int      `json:"chancesLeft"`
 	GameState        int8     `json:"gameState"`
 	Message          string   `json:"message"`
+	Version          int      `json:"version,omitempty"`
 
-	mutex sync.Mutex
+	mu sync.Mutex
 }
 
 func New() *State {
@@ -44,16 +45,20 @@ func (s *State) Update(
 	gameState int8,
 	message string,
 ) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.GuessedCharacter = guessedCharacter
 	s.IncorrectGuesses = incorrectGuesses
 	s.ChancesLeft = chancesLeft
 	s.GameState = gameState
 	s.Message = message
+	s.Version++
 }
 
 func (s *State) HandleNewLetter(letter string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.GameState = GameGoing
 	s.Message = ""
@@ -68,16 +73,18 @@ func (s *State) HandleNewLetter(letter string) {
 	} else {
 		s.handleRepeatedGuess(letter)
 	}
+	s.Version++
 }
 
 func (s *State) Reset() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.GuessedCharacter = initializeGuessedCharacter(characterName)
 	s.IncorrectGuesses = make([]string, 0)
 	s.ChancesLeft = initialChances
 	s.GameState = GameStart
+	s.Version++
 }
 
 func initializeGuessedCharacter(characterName string) []string {

@@ -40,13 +40,15 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 }
 
 func (s *grpcServer) Send(_ context.Context, state *api.State) (*emptypb.Empty, error) {
-	s.Config.State.Update(
-		state.GuessedCharacter,
-		state.IncorrectGuesses,
-		int(state.ChancesLeft),
-		int8(state.GameState),
-		state.Message,
-	)
+	if int(state.Version) > s.State.Version {
+		s.Config.State.Update(
+			state.GuessedCharacter,
+			state.IncorrectGuesses,
+			int(state.ChancesLeft),
+			int8(state.GameState),
+			state.Message,
+		)
+	}
 
 	return &emptypb.Empty{}, nil
 }
@@ -58,5 +60,6 @@ func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.State, e
 		ChancesLeft:      int32(s.State.ChancesLeft),
 		GameState:        int32(s.State.GameState),
 		Message:          s.State.Message,
+		Version:          int32(s.State.Version),
 	}, nil
 }
