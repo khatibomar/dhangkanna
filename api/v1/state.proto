@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+package game;
+option go_package = "github.com/khatibomar/dhangkanna/api/state_v1";
+
+message State {
+  repeated string guessedCharacter = 1;
+  repeated string incorrectGuesses = 2;
+  int32 chancesLeft = 3;
+  int32 gameState = 4;
+  string message = 5;
+}
+
+service StateService {
+  rpc Send (State) returns (google.protobuf.Empty);
+  rpc Receive (google.protobuf.Empty)  returns (State);
+}

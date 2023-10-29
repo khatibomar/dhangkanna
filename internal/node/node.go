@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"github.com/gorilla/websocket"
-	"github.com/khatibomar/dhangkanna/internal/state"
+	"github.com/khatibomar/dhangkanna/internal/agent"
 	"log"
 	"net/http"
 	"strings"
@@ -11,8 +11,8 @@ import (
 )
 
 type Node struct {
-	state *state.State
-
+	agent             *agent.Agent
+	config            Config
 	upgrader          websocket.Upgrader
 	logger            *log.Logger
 	sendChannel       chan SocketEvent
@@ -20,14 +20,20 @@ type Node struct {
 	mutex             sync.Mutex
 }
 
+type Config struct {
+	BindAddr       string
+	RPCPort        int
+	NodeName       string
+	StartJoinAddrs []string
+}
+
 type SocketEvent struct {
 	Name    string `json:"name"`
 	Content any    `json:"content"`
 }
 
-func New(ctx context.Context) *Node {
+func New(ctx context.Context, cfg agent.Config) (*Node, error) {
 	n := &Node{
-		state: state.New(),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
@@ -38,8 +44,14 @@ func New(ctx context.Context) *Node {
 		activeConnections: make(map[*websocket.Conn]struct{}),
 	}
 
+	var err error
+	n.agent, err = agent.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	go n.sendMessages(ctx)
-	return n
+	return n, nil
 }
 
 func (n *Node) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -140,13 +152,13 @@ func (n *Node) sendMessages(ctx context.Context) {
 
 func (n *Node) handleNewLetter(letter string) {
 	n.logger.Printf("Handling letter %v", letter)
-	n.state.HandleNewLetter(letter)
+	n.agent.State.HandleNewLetter(letter)
 	n.logger.Printf("Letter %v handled successfully", letter)
 	n.sendGameState()
 }
 
 func (n *Node) sendGameState() {
-	n.sendSocketEvent(SocketEvent{Name: "state", Content: n.state})
+	n.sendSocketEvent(SocketEvent{Name: "state", Content: n.agent.State})
 	n.logger.Println("Sending game state to all connected clients")
 }
 
@@ -161,7 +173,7 @@ func (n *Node) sendSocketEvent(event SocketEvent) {
 }
 
 func (n *Node) resetGame() {
-	n.state.Reset()
+	n.agent.State.Reset()
 	n.sendGameState()
 	n.logger.Println("Game has been reset.")
 }

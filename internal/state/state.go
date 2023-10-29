@@ -37,16 +37,18 @@ func New() *State {
 	}
 }
 
-func initializeGuessedCharacter(characterName string) []string {
-	guessedCharacter := make([]string, len(characterName))
-	for i, char := range characterName {
-		if char == ' ' {
-			guessedCharacter[i] = " "
-		} else {
-			guessedCharacter[i] = "_"
-		}
-	}
-	return guessedCharacter
+func (s *State) Update(
+	guessedCharacter []string,
+	incorrectGuesses []string,
+	chancesLeft int,
+	gameState int8,
+	message string,
+) {
+	s.GuessedCharacter = guessedCharacter
+	s.IncorrectGuesses = incorrectGuesses
+	s.ChancesLeft = chancesLeft
+	s.GameState = gameState
+	s.Message = message
 }
 
 func (s *State) HandleNewLetter(letter string) {
@@ -66,6 +68,28 @@ func (s *State) HandleNewLetter(letter string) {
 	} else {
 		s.handleRepeatedGuess(letter)
 	}
+}
+
+func (s *State) Reset() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.GuessedCharacter = initializeGuessedCharacter(characterName)
+	s.IncorrectGuesses = make([]string, 0)
+	s.ChancesLeft = initialChances
+	s.GameState = GameStart
+}
+
+func initializeGuessedCharacter(characterName string) []string {
+	guessedCharacter := make([]string, len(characterName))
+	for i, char := range characterName {
+		if char == ' ' {
+			guessedCharacter[i] = " "
+		} else {
+			guessedCharacter[i] = "_"
+		}
+	}
+	return guessedCharacter
 }
 
 func (s *State) handleCorrectGuess(letter string) {
@@ -95,16 +119,6 @@ func (s *State) handleRepeatedGuess(letter string) {
 
 func (s *State) handleInvalidCharacter() {
 	s.Message = "Please enter a valid single letter."
-}
-
-func (s *State) Reset() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.GuessedCharacter = initializeGuessedCharacter(characterName)
-	s.IncorrectGuesses = make([]string, 0)
-	s.ChancesLeft = initialChances
-	s.GameState = GameStart
 }
 
 func isValidLetter(letter string) bool {

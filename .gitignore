@@ -141,3 +141,5 @@ fabric.properties
 
 static/game.js
 dhangkanna
+/api/v1/state.pb.go
+/api/v1/state_grpc.pb.go
