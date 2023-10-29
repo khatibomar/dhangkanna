@@ -13,7 +13,7 @@ import (
 
 type Replicator struct {
 	DialOptions      []grpc.DialOption
-	LocalServer      api.StateServiceClient
+	LocalServer      api.GameServiceClient
 	UpdateSocketChan chan struct{}
 	logger           *log.Logger
 	mu               sync.Mutex
@@ -86,7 +86,7 @@ func (r *Replicator) replicate(addr string) {
 		}
 	}()
 
-	client := api.NewStateServiceClient(cc)
+	client := api.NewGameServiceClient(cc)
 	ctx := context.Background()
 	s, err := client.Receive(ctx, &emptypb.Empty{})
 	if err != nil {

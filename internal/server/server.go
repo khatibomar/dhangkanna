@@ -8,14 +8,14 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var _ api.StateServiceServer = (*grpcServer)(nil)
+var _ api.GameServiceServer = (*grpcServer)(nil)
 
 type Config struct {
 	State *game.Game
 }
 
 type grpcServer struct {
-	api.UnimplementedStateServiceServer
+	api.UnimplementedGameServiceServer
 	*Config
 }
 
@@ -35,7 +35,7 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 	if err != nil {
 		return nil, err
 	}
-	api.RegisterStateServiceServer(gsrv, srv)
+	api.RegisterGameServiceServer(gsrv, srv)
 	return gsrv, nil
 }
 

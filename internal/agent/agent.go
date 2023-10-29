@@ -76,7 +76,7 @@ func (a *Agent) setupDiscovery() error {
 		a.logger.Printf("Error dialing RPC: %v", err)
 		return err
 	}
-	client := api.NewStateServiceClient(conn)
+	client := api.NewGameServiceClient(conn)
 	a.replicator = &game.Replicator{
 		DialOptions:      opts,
 		LocalServer:      client,
