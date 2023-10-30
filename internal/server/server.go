@@ -6,22 +6,26 @@ import (
 	"github.com/khatibomar/dhangkanna/internal/game"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"log"
+	"os"
 )
 
 var _ api.GameServiceServer = (*grpcServer)(nil)
 
 type Config struct {
-	State *game.Game
+	Game *game.Game
 }
 
 type grpcServer struct {
 	api.UnimplementedGameServiceServer
 	*Config
+	logger *log.Logger
 }
 
 func newGrpcServer(config *Config) (srv *grpcServer, err error) {
 	srv = &grpcServer{
 		Config: config,
+		logger: log.New(os.Stdout, "grpc server: ", log.LstdFlags),
 	}
 	return srv, nil
 }
@@ -40,7 +44,8 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 }
 
 func (s *grpcServer) Send(_ context.Context, state *api.Game) (*emptypb.Empty, error) {
-	if int(state.Version) > s.State.Version {
+	s.logger.Println("Received new state with version %d ==? old version %d", state.Version, s.Game.Version)
+	if int(state.Version) > s.Game.Version {
 		if state.GuessedCharacter == nil {
 			state.GuessedCharacter = make([]string, 0)
 		}
@@ -48,7 +53,7 @@ func (s *grpcServer) Send(_ context.Context, state *api.Game) (*emptypb.Empty, e
 		if state.IncorrectGuesses == nil {
 			state.IncorrectGuesses = make([]string, 0)
 		}
-		s.Config.State.Update(
+		s.Config.Game.Update(
 			state.GuessedCharacter,
 			state.IncorrectGuesses,
 			int(state.ChancesLeft),
@@ -63,12 +68,12 @@ func (s *grpcServer) Send(_ context.Context, state *api.Game) (*emptypb.Empty, e
 
 func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.Game, error) {
 	st := &api.Game{
-		GuessedCharacter: s.State.GuessedCharacter,
-		IncorrectGuesses: s.State.IncorrectGuesses,
-		ChancesLeft:      int32(s.State.ChancesLeft),
-		GameState:        int32(s.State.GameState),
-		Message:          s.State.Message,
-		Version:          int32(s.State.Version),
+		GuessedCharacter: s.Game.GuessedCharacter,
+		IncorrectGuesses: s.Game.IncorrectGuesses,
+		ChancesLeft:      int32(s.Game.ChancesLeft),
+		GameState:        int32(s.Game.GameState),
+		Message:          s.Game.Message,
+		Version:          int32(s.Game.Version),
 	}
 
 	if st.GuessedCharacter == nil {

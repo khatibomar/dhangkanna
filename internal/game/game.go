@@ -26,7 +26,8 @@ type Game struct {
 	Message          string   `json:"message"`
 	Version          int      `json:"version,omitempty"`
 
-	mu sync.Mutex
+	UpdateSocketChan chan struct{} `json:"-"`
+	mu               sync.Mutex
 }
 
 func New() *Game {
@@ -35,6 +36,7 @@ func New() *Game {
 		IncorrectGuesses: make([]string, 0),
 		ChancesLeft:      initialChances,
 		GameState:        Start,
+		UpdateSocketChan: make(chan struct{}),
 	}
 }
 
@@ -55,6 +57,8 @@ func (g *Game) Update(
 	g.GameState = gameState
 	g.Message = message
 	g.Version = version
+
+	g.UpdateSocketChan <- struct{}{}
 }
 
 func (g *Game) HandleNewLetter(letter string) {
@@ -78,14 +82,14 @@ func (g *Game) HandleNewLetter(letter string) {
 }
 
 func (g *Game) Reset() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	g.GuessedCharacter = initializeGuessedCharacter(characterName)
-	g.IncorrectGuesses = make([]string, 0)
-	g.ChancesLeft = initialChances
-	g.GameState = Start
-	g.Version++
+	g.Update(
+		initializeGuessedCharacter(characterName),
+		make([]string, 0),
+		initialChances,
+		Start,
+		"",
+		g.Version+1,
+	)
 }
 
 func initializeGuessedCharacter(characterName string) []string {
@@ -117,12 +121,12 @@ func (g *Game) handleIncorrectGuess(letter string) {
 	g.ChancesLeft--
 	if g.ChancesLeft == 0 {
 		g.GameState = Lost
-		g.Message = fmt.Sprintf("You lose! The character was: %g", characterName)
+		g.Message = fmt.Sprintf("You lose! The character was: %s", characterName)
 	}
 }
 
 func (g *Game) handleRepeatedGuess(letter string) {
-	g.Message = fmt.Sprintf("You already picked %g", letter)
+	g.Message = fmt.Sprintf("You already picked %s", letter)
 }
 
 func (g *Game) handleInvalidCharacter() {

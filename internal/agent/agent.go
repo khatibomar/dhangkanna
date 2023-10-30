@@ -1,31 +1,32 @@
 package agent
 
 import (
+	"bytes"
 	"fmt"
-	api "github.com/khatibomar/dhangkanna/api/v1"
+	"github.com/hashicorp/raft"
 	"github.com/khatibomar/dhangkanna/internal/discovery"
 	"github.com/khatibomar/dhangkanna/internal/game"
 	"github.com/khatibomar/dhangkanna/internal/server"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"io"
 	"log"
 	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 type Agent struct {
-	Config
-
-	State            *game.Game
-	UpdateSocketChan chan struct{}
-	server           *grpc.Server
-	discovery        *discovery.Discovery
-	replicator       *game.Replicator
-	logger           *log.Logger
-	shutdown         bool
-	shutdowns        chan struct{}
-	shutdownLock     sync.Mutex
+	Config          Config
+	mux             cmux.CMux
+	DistributedGame *game.DistributedGame
+	server          *grpc.Server
+	discovery       *discovery.Discovery
+	logger          *log.Logger
+	shutdown        bool
+	shutdowns       chan struct{}
+	shutdownLock    sync.Mutex
 }
 
 type Config struct {
@@ -33,6 +34,8 @@ type Config struct {
 	RPCPort        int
 	NodeName       string
 	StartJoinAddrs []string
+	Bootstrap      bool
+	DataDir        string
 }
 
 func (c Config) RPCAddr() (string, error) {
@@ -45,13 +48,13 @@ func (c Config) RPCAddr() (string, error) {
 
 func New(config Config) (*Agent, error) {
 	a := &Agent{
-		Config:           config,
-		State:            game.New(),
-		UpdateSocketChan: make(chan struct{}),
-		shutdowns:        make(chan struct{}),
-		logger:           log.New(os.Stdout, "agent: ", log.LstdFlags),
+		Config:    config,
+		shutdowns: make(chan struct{}),
+		logger:    log.New(os.Stdout, "agent: ", log.LstdFlags),
 	}
 	setup := []func() error{
+		a.setupMux,
+		a.setupGame,
 		a.setupServer,
 		a.setupDiscovery,
 	}
@@ -60,7 +63,72 @@ func New(config Config) (*Agent, error) {
 			return nil, err
 		}
 	}
+
+	go func() {
+		if err := a.serve(); err != nil {
+			a.logger.Printf("error while serving mux : %v", err)
+		}
+	}()
+
 	return a, nil
+}
+
+func (a *Agent) serve() error {
+	if err := a.mux.Serve(); err != nil {
+		_ = a.Shutdown()
+		return err
+	}
+	return nil
+}
+
+func (a *Agent) setupMux() error {
+	addr, err := net.ResolveTCPAddr("tcp", a.Config.BindAddr)
+	if err != nil {
+		return err
+	}
+	rpcAddr := fmt.Sprintf(
+		"%s:%d",
+		addr.IP.String(),
+		a.Config.RPCPort,
+	)
+	ln, err := net.Listen("tcp", rpcAddr)
+	if err != nil {
+		return err
+	}
+	a.mux = cmux.New(ln)
+	return nil
+}
+
+func (a *Agent) setupGame() error {
+	raftLn := a.mux.Match(func(reader io.Reader) bool {
+		b := make([]byte, 1)
+		if _, err := reader.Read(b); err != nil {
+			return false
+		}
+		return bytes.Compare(b, []byte{byte(game.RaftRPC)}) == 0
+	})
+	gameConfig := game.Config{}
+	gameConfig.Raft.StreamLayer = game.NewStreamLayer(
+		raftLn,
+	)
+	rpcAddr, err := a.Config.RPCAddr()
+	if err != nil {
+		return err
+	}
+	gameConfig.Raft.BindAddr = rpcAddr
+	gameConfig.Raft.LocalID = raft.ServerID(a.Config.NodeName)
+	gameConfig.Raft.Bootstrap = a.Config.Bootstrap
+	a.DistributedGame, err = game.NewDistributedGame(
+		a.Config.DataDir,
+		gameConfig,
+	)
+	if err != nil {
+		return err
+	}
+	if a.Config.Bootstrap {
+		err = a.DistributedGame.WaitForLeader(3 * time.Second)
+	}
+	return err
 }
 
 func (a *Agent) setupDiscovery() error {
@@ -69,20 +137,7 @@ func (a *Agent) setupDiscovery() error {
 		a.logger.Printf("Error getting RPC address: %v", err)
 		return err
 	}
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	conn, err := grpc.Dial(rpcAddr, opts...)
-	if err != nil {
-		a.logger.Printf("Error dialing RPC: %v", err)
-		return err
-	}
-	client := api.NewGameServiceClient(conn)
-	a.replicator = &game.Replicator{
-		DialOptions:      opts,
-		LocalServer:      client,
-		UpdateSocketChan: a.UpdateSocketChan,
-	}
-	a.discovery, err = discovery.New(a.replicator, discovery.Config{
+	a.discovery, err = discovery.New(a.DistributedGame, discovery.Config{
 		NodeName: a.Config.NodeName,
 		BindAddr: a.Config.BindAddr,
 		Tags: map[string]string{
@@ -90,36 +145,22 @@ func (a *Agent) setupDiscovery() error {
 		},
 		StartJoinsAddresses: a.Config.StartJoinAddrs,
 	})
-	if err != nil {
-		a.logger.Printf("Error creating Discovery: %v", err)
-	}
 	return err
 }
 
 func (a *Agent) setupServer() error {
 	serverConfig := &server.Config{
-		State: a.State,
+		Game: a.DistributedGame.Game,
 	}
 	var opts []grpc.ServerOption
 	var err error
 	a.server, err = server.NewGRPCServer(serverConfig, opts...)
 	if err != nil {
-		a.logger.Printf("Error creating gRPC server: %v", err)
 		return err
 	}
-	rpcAddr, err := a.RPCAddr()
-	if err != nil {
-		a.logger.Printf("Error getting RPC address: %v", err)
-		return err
-	}
-	ln, err := net.Listen("tcp", rpcAddr)
-	if err != nil {
-		a.logger.Printf("Error listening on address: %v", err)
-		return err
-	}
+	grpcLn := a.mux.Match(cmux.Any())
 	go func() {
-		if err := a.server.Serve(ln); err != nil {
-			a.logger.Printf("Error serving gRPC server: %v", err)
+		if err := a.server.Serve(grpcLn); err != nil {
 			_ = a.Shutdown()
 		}
 	}()
@@ -137,7 +178,7 @@ func (a *Agent) Shutdown() error {
 
 	shutdown := []func() error{
 		a.discovery.Leave,
-		a.replicator.Close,
+		a.DistributedGame.Close,
 		func() error {
 			a.server.GracefulStop()
 			return nil
@@ -149,5 +190,6 @@ func (a *Agent) Shutdown() error {
 			return err
 		}
 	}
+	a.logger.Println("Shutting down...")
 	return nil
 }

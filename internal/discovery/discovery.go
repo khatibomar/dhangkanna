@@ -74,6 +74,7 @@ func (d *Discovery) setup() error {
 
 func (d *Discovery) handleSerfEvents() {
 	for e := range d.events {
+		d.logger.Printf("received serf event : %+v", e.EventType())
 		switch e.EventType() {
 		case serf.EventMemberJoin:
 			for _, member := range e.(serf.MemberEvent).Members {

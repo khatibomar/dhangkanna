@@ -13,7 +13,18 @@ message Game {
   int32 version = 6;
 }
 
-service StateService {
+service GameService {
   rpc Send (Game) returns (google.protobuf.Empty);
   rpc Receive (google.protobuf.Empty)  returns (Game);
+  rpc GetServers(google.protobuf.Empty) returns (GetServersResponse) {}
+}
+
+message GetServersResponse {
+  repeated Server servers = 1;
+}
+
+message Server {
+  string id = 1;
+  string rpc_addr = 2;
+  bool is_leader = 3;
 }

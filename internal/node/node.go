@@ -3,28 +3,24 @@ package node
 import (
 	"context"
 	"github.com/gorilla/websocket"
+	api "github.com/khatibomar/dhangkanna/api/v1"
 	"github.com/khatibomar/dhangkanna/internal/agent"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Node struct {
 	agent             *agent.Agent
-	config            Config
+	config            agent.Config
 	upgrader          websocket.Upgrader
 	logger            *log.Logger
 	sendChannel       chan SocketEvent
 	activeConnections map[*websocket.Conn]struct{}
 	mutex             sync.Mutex
-}
-
-type Config struct {
-	BindAddr       string
-	RPCPort        int
-	NodeName       string
-	StartJoinAddrs []string
 }
 
 type SocketEvent struct {
@@ -50,9 +46,13 @@ func New(ctx context.Context, cfg agent.Config) (*Node, error) {
 		return nil, err
 	}
 
-	go n.updateFrontend(ctx, n.agent.UpdateSocketChan)
+	go n.updateFrontend(ctx, n.agent.DistributedGame.Game.UpdateSocketChan)
 	go n.sendMessages(ctx)
 	return n, nil
+}
+
+func (n *Node) Shutdown() error {
+	return n.agent.Shutdown()
 }
 
 func (n *Node) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +131,29 @@ func (n *Node) receiveMessages(ctx context.Context, client *websocket.Conn) {
 				letter := strings.ToLower(msg.Letter)
 				n.handleNewLetter(letter)
 			}
+
+			b, _ := proto.Marshal(&api.Game{
+				GuessedCharacter: n.agent.DistributedGame.Game.GuessedCharacter,
+				IncorrectGuesses: n.agent.DistributedGame.Game.IncorrectGuesses,
+				ChancesLeft:      int32(n.agent.DistributedGame.Game.ChancesLeft),
+				GameState:        int32(n.agent.DistributedGame.Game.GameState),
+				Message:          n.agent.DistributedGame.Game.Message,
+				Version:          int32(n.agent.DistributedGame.Game.Version),
+			})
+
+			future := n.agent.DistributedGame.Raft.Apply(b, 10*time.Second)
+
+			if future.Error() != nil {
+				n.logger.Printf("failed to do future: %v\n", future.Error())
+				return
+			}
+			res := future.Response()
+			if err, ok := res.(error); ok {
+				n.logger.Printf("failed to apply change: %v\n", err)
+				return
+			}
+
+			n.logger.Println("raft updated successfully")
 		}
 	}
 }
@@ -165,13 +188,12 @@ func (n *Node) sendMessages(ctx context.Context) {
 
 func (n *Node) handleNewLetter(letter string) {
 	n.logger.Printf("Handling letter %v", letter)
-	n.agent.State.HandleNewLetter(letter)
+	n.agent.DistributedGame.Game.HandleNewLetter(letter)
 	n.logger.Printf("Letter %v handled successfully", letter)
-	n.sendGameState()
 }
 
 func (n *Node) sendGameState() {
-	n.sendSocketEvent(SocketEvent{Name: "game", Content: n.agent.State})
+	n.sendSocketEvent(SocketEvent{Name: "game", Content: n.agent.DistributedGame.Game})
 	n.logger.Println("Sending game game to all connected clients")
 }
 
@@ -186,7 +208,6 @@ func (n *Node) sendSocketEvent(event SocketEvent) {
 }
 
 func (n *Node) resetGame() {
-	n.agent.State.Reset()
-	n.sendGameState()
-	n.logger.Println("Game has been reset.")
+	n.agent.DistributedGame.Game.Reset()
+	n.logger.Println("DistributedGame has been reset.")
 }

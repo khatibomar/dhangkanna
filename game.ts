@@ -137,7 +137,8 @@ document.addEventListener('keydown', function(event) {
 });
 
 guessButton.addEventListener('click', function () {
-    guessLetter();
+    if(guessButton.textContent === "Restart") notifyResetGame();
+    else guessLetter();
 });
 
 document.addEventListener('mouseleave', focusInput);
