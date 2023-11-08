@@ -25,6 +25,7 @@ type Game struct {
 	GameState        int8     `json:"gameState"`
 	Message          string   `json:"message"`
 	Version          int      `json:"version,omitempty"`
+	IsLeader         bool     `json:"isLeader"`
 
 	UpdateSocketChan chan struct{} `json:"-"`
 	mu               sync.Mutex

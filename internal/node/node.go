@@ -193,6 +193,8 @@ func (n *Node) handleNewLetter(letter string) {
 }
 
 func (n *Node) sendGameState() {
+	_, id := n.agent.DistributedGame.Raft.LeaderWithID()
+	n.agent.DistributedGame.Game.IsLeader = n.agent.Config.NodeName == string(id)
 	n.sendSocketEvent(SocketEvent{Name: "game", Content: n.agent.DistributedGame.Game})
 	n.logger.Println("Sending game game to all connected clients")
 }
