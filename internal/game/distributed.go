@@ -30,7 +30,7 @@ type DistributedGame struct {
 func NewDistributedGame(dataDir string, config Config) (*DistributedGame, error) {
 	g := &DistributedGame{
 		config: config,
-		logger: log.New(os.Stdout, "distributed game: ", log.LstdFlags),
+		logger: log.New(os.Stdout, "distributed game: ", log.LstdFlags|log.Lshortfile),
 	}
 	g.Game = New()
 
@@ -84,8 +84,8 @@ func (g *DistributedGame) Join(id, addr string) error {
 	}
 	g.logger.Printf("Adding server to the cluster: %s\n", id)
 	addFuture := g.Raft.AddVoter(serverID, serverAddr, 0, 0)
-	if err := addFuture.Error(); err != nil {
-		return err
+	if addFuture.Error() != nil {
+		return addFuture.Error()
 	}
 	g.logger.Printf("Server ( %s , %s ) joined the cluster successfully\n", serverID, serverAddr)
 
@@ -93,12 +93,7 @@ func (g *DistributedGame) Join(id, addr string) error {
 }
 
 func (g *DistributedGame) Leave(id string) error {
-	g.logger.Printf("Leaving the cluster with ID: %s\n", id)
-
 	removeFuture := g.Raft.RemoveServer(raft.ServerID(id), 0, 0)
-
-	g.logger.Printf("Server ( %s ) Left the cluster successfully\n", id)
-
 	return removeFuture.Error()
 }
 
@@ -108,8 +103,8 @@ func (g *DistributedGame) GetServers() ([]*api.Server, error) {
 		return nil, err
 	}
 	var servers []*api.Server
+	leaderAdrr, _ := g.Raft.LeaderWithID()
 	for _, server := range future.Configuration().Servers {
-		leaderAdrr, _ := g.Raft.LeaderWithID()
 		servers = append(servers, &api.Server{
 			Id:       string(server.ID),
 			RpcAddr:  string(server.Address),
@@ -129,20 +124,20 @@ func (g *DistributedGame) setupRaft(dataDir string) error {
 
 	fsm := &fsm{game: g.Game}
 
-	logDir := filepath.Join(dataDir, "Raft", "log")
+	logDir := filepath.Join(dataDir, "raft")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return err
 	}
 
 	stableStore, err := raftboltdb.NewBoltStore(
-		filepath.Join(dataDir, "Raft", "stable"),
+		filepath.Join(dataDir, "raft", "stable"),
 	)
 	if err != nil {
 		return err
 	}
 
 	logStore, err := raftboltdb.NewBoltStore(
-		filepath.Join(dataDir, "Raft", "store"),
+		filepath.Join(dataDir, "raft", "store"),
 	)
 	if err != nil {
 		return err
@@ -150,7 +145,7 @@ func (g *DistributedGame) setupRaft(dataDir string) error {
 
 	retain := 1
 	snapshotStore, err := raft.NewFileSnapshotStore(
-		filepath.Join(dataDir, "Raft"),
+		filepath.Join(dataDir, "raft", "log"),
 		retain,
 		os.Stderr,
 	)

@@ -31,9 +31,9 @@ func main() {
 
 	flag.UintVar(&cfg.port, "port", 4000, "Specify the port on which the game will run")
 	flag.StringVar(&cfg.agentConfig.NodeName, "node-name", hostname, "Unique server ID.")
-	flag.StringVar(&cfg.agentConfig.DataDir, "data-dir", dataDir, "Directory to store Raft data.")
+	flag.StringVar(&cfg.agentConfig.DataDir, "data-dir", dataDir, "Directory to store raft data.")
 	flag.StringVar(&cfg.agentConfig.BindAddr, "bind-addr", "127.0.0.1:4001", "Address to bind Serf on.")
-	flag.IntVar(&cfg.agentConfig.RPCPort, "rpc-port", 4002, "Port for RPC clients (and Raft) connections.")
+	flag.IntVar(&cfg.agentConfig.RPCPort, "rpc-port", 4002, "Port for RPC clients (and raft) connections.")
 	flag.BoolVar(&cfg.agentConfig.Bootstrap, "bootstrap", false, "Bootstrap the cluster.")
 	flag.StringVar(&startJoinAddrs, "start-join-addrs", "", "Serf addresses to join.")
 	flag.Parse()

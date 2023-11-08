@@ -50,7 +50,7 @@ func New(config Config) (*Agent, error) {
 	a := &Agent{
 		Config:    config,
 		shutdowns: make(chan struct{}),
-		logger:    log.New(os.Stdout, "agent: ", log.LstdFlags),
+		logger:    log.New(os.Stdout, "agent: ", log.LstdFlags|log.Lshortfile),
 	}
 	setup := []func() error{
 		a.setupMux,
@@ -178,7 +178,6 @@ func (a *Agent) Shutdown() error {
 
 	shutdown := []func() error{
 		a.discovery.Leave,
-		a.DistributedGame.Close,
 		func() error {
 			a.server.GracefulStop()
 			return nil

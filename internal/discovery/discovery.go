@@ -31,7 +31,7 @@ func New(handler Handler, config Config) (*Discovery, error) {
 	d := &Discovery{
 		Config:  config,
 		handler: handler,
-		logger:  log.New(os.Stdout, "discovery: ", log.LstdFlags),
+		logger:  log.New(os.Stdout, "discovery: ", log.LstdFlags|log.Lshortfile),
 	}
 
 	if err := d.setup(); err != nil {
@@ -84,11 +84,8 @@ func (d *Discovery) handleSerfEvents() {
 				d.handleJoin(member)
 			}
 			break
-		case serf.EventMemberLeave:
+		case serf.EventMemberLeave, serf.EventMemberFailed:
 			for _, member := range e.(serf.MemberEvent).Members {
-				if d.isLocal(member) {
-					continue
-				}
 				d.handleLeave(member)
 			}
 			break
@@ -107,9 +104,10 @@ func (d *Discovery) handleJoin(member serf.Member) {
 func (d *Discovery) handleLeave(member serf.Member) {
 	if err := d.handler.Leave(member.Name); err != nil {
 		d.logError(err, "failed to leave", member)
-	} else {
-		d.logger.Printf("Left: Name=%s, RPC Address=%s", member.Name, member.Tags["rpc_addr"])
+		return
 	}
+
+	d.logger.Printf("Left: Name=%s, RPC Address=%s", member.Name, member.Tags["rpc_addr"])
 }
 
 func (d *Discovery) isLocal(member serf.Member) bool {
