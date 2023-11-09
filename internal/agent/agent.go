@@ -132,11 +132,13 @@ func (a *Agent) setupGame() error {
 }
 
 func (a *Agent) setupDiscovery() error {
+	a.logger.Println("setting up discovery")
 	rpcAddr, err := a.Config.RPCAddr()
 	if err != nil {
 		a.logger.Printf("Error getting RPC address: %v", err)
 		return err
 	}
+	a.logger.Println(a.Config.StartJoinAddrs)
 	a.discovery, err = discovery.New(a.DistributedGame, discovery.Config{
 		NodeName: a.Config.NodeName,
 		BindAddr: a.Config.BindAddr,
@@ -145,10 +147,12 @@ func (a *Agent) setupDiscovery() error {
 		},
 		StartJoinsAddresses: a.Config.StartJoinAddrs,
 	})
+	a.logger.Println("done setting up discovery")
 	return err
 }
 
 func (a *Agent) setupServer() error {
+	a.logger.Println("setting up server")
 	serverConfig := &server.Config{
 		Game:        a.DistributedGame.Game,
 		GetServerer: a.DistributedGame,
@@ -165,6 +169,7 @@ func (a *Agent) setupServer() error {
 			_ = a.Shutdown()
 		}
 	}()
+	a.logger.Println("done setting up server")
 	return err
 }
 

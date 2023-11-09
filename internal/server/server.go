@@ -52,6 +52,7 @@ func (s *grpcServer) Send(_ context.Context, letter *api.Letter) (*emptypb.Empty
 }
 
 func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.Game, error) {
+	s.logger.Println("this server handling reading game state")
 	st := &api.Game{
 		GuessedCharacter: s.Game.GuessedCharacter,
 		IncorrectGuesses: s.Game.IncorrectGuesses,

@@ -75,13 +75,13 @@ func parse(cfg *agent.Config) {
 		"",
 		"Serf addresses to join.")
 
-	if startAddrs != "" {
-		cfg.StartJoinAddrs = strings.Split(startAddrs, ",")
-	}
-
 	flag.BoolVar(&cfg.Bootstrap, "bootstrap", false, "Bootstrap the cluster.")
 
 	flag.Parse()
+
+	if startAddrs != "" {
+		cfg.StartJoinAddrs = strings.Split(startAddrs, ",")
+	}
 }
 
 func removeServerFromDB(addr string) error {

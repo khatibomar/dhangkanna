@@ -120,7 +120,7 @@ func (g *DistributedGame) Close() error {
 }
 
 func (g *DistributedGame) setupRaft(dataDir string) error {
-	g.logger.Println("Closing the Raft cluster")
+	g.logger.Println("setting up raft")
 
 	fsm := &fsm{game: g.Game}
 
@@ -205,5 +205,6 @@ func (g *DistributedGame) setupRaft(dataDir string) error {
 		}
 		err = g.Raft.BootstrapCluster(config).Error()
 	}
+	g.logger.Println("Done setting up raft")
 	return err
 }
