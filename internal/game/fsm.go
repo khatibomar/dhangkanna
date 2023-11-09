@@ -2,7 +2,7 @@ package game
 
 import (
 	"github.com/hashicorp/raft"
-	api "github.com/khatibomar/dhangkanna/api/v1"
+	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"sync"
@@ -50,7 +50,7 @@ func (f *fsm) Restore(snapshot io.ReadCloser) error {
 		GameState:        int8(gameSnapshot.GameState),
 		Message:          gameSnapshot.Message,
 		Version:          int(gameSnapshot.Version),
-		mu:               sync.Mutex{},
+		mu:               &sync.Mutex{},
 	}
 
 	return nil

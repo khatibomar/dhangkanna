@@ -13,9 +13,14 @@ message Game {
   int32 version = 6;
 }
 
+message Letter {
+  string letter = 1;
+}
+
 service GameService {
-  rpc Send (Game) returns (google.protobuf.Empty);
+  rpc Send (Letter) returns (google.protobuf.Empty);
   rpc Receive (google.protobuf.Empty)  returns (Game);
+  rpc Reset (google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc GetServers(google.protobuf.Empty) returns (GetServersResponse) {}
 }
 

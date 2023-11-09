@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	api "github.com/khatibomar/dhangkanna/api/v1"
+	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
 	"github.com/khatibomar/dhangkanna/internal/game"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,7 +13,8 @@ import (
 var _ api.GameServiceServer = (*grpcServer)(nil)
 
 type Config struct {
-	Game *game.Game
+	Game        *game.Game
+	GetServerer GetServerer
 }
 
 type grpcServer struct {
@@ -43,25 +44,9 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 	return gsrv, nil
 }
 
-func (s *grpcServer) Send(_ context.Context, state *api.Game) (*emptypb.Empty, error) {
-	s.logger.Println("Received new state with version %d ==? old version %d", state.Version, s.Game.Version)
-	if int(state.Version) > s.Game.Version {
-		if state.GuessedCharacter == nil {
-			state.GuessedCharacter = make([]string, 0)
-		}
-
-		if state.IncorrectGuesses == nil {
-			state.IncorrectGuesses = make([]string, 0)
-		}
-		s.Config.Game.Update(
-			state.GuessedCharacter,
-			state.IncorrectGuesses,
-			int(state.ChancesLeft),
-			int8(state.GameState),
-			state.Message,
-			int(state.Version),
-		)
-	}
+func (s *grpcServer) Send(_ context.Context, letter *api.Letter) (*emptypb.Empty, error) {
+	s.logger.Printf("Received new letter %s", letter)
+	s.Game.HandleNewLetter(letter.Letter)
 
 	return &emptypb.Empty{}, nil
 }
@@ -76,13 +61,24 @@ func (s *grpcServer) Receive(_ context.Context, _ *emptypb.Empty) (*api.Game, er
 		Version:          int32(s.Game.Version),
 	}
 
-	if st.GuessedCharacter == nil {
-		st.GuessedCharacter = make([]string, 0)
-	}
-
-	if st.IncorrectGuesses == nil {
-		st.IncorrectGuesses = make([]string, 0)
-	}
-
 	return st, nil
+}
+
+func (s *grpcServer) Reset(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	s.logger.Println("Reset received")
+	s.Game.Reset()
+	s.logger.Println("Reset completed")
+	return &emptypb.Empty{}, nil
+}
+
+func (s *grpcServer) GetServers(_ context.Context, _ *emptypb.Empty) (*api.GetServersResponse, error) {
+	servers, err := s.GetServerer.GetServers()
+	if err != nil {
+		return nil, err
+	}
+	return &api.GetServersResponse{Servers: servers}, nil
+}
+
+type GetServerer interface {
+	GetServers() ([]*api.Server, error)
 }

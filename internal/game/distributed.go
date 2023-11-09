@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
-	api "github.com/khatibomar/dhangkanna/api/v1"
+	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
 	"log"
 	"os"
 	"path/filepath"

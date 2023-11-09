@@ -5,7 +5,6 @@ type gameState = {
     chancesLeft: Number,
     gameState: GameState,
     message: String,
-    isLeader: Boolean
 }
 
 enum GameState {
@@ -82,11 +81,6 @@ function updateGame(state: gameState) {
             break;
         default:
             break;
-    }
-    if(state.isLeader) {
-        letterInput.disabled = false;
-    } else {
-        letterInput.disabled = true;
     }
     chancesLeftDisplay.textContent = state.chancesLeft.toString();
     characterDisplay.textContent = state.guessedCharacter.join('');

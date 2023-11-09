@@ -139,7 +139,10 @@ fabric.properties
 
 # End of https://www.toptal.com/developers/gitignore/api/goland,go
 
-static/game.js
-dhangkanna
-/api/v1/game.pb.go
-/api/v1/game_grpc.pb.go
+cmd/frontend/static/game.js
+dhangkanna_back
+dhangkanna_back.exe
+dhangkanna_front
+cmd/frontend/dhangkanna_front.exe
+/cmd/api/v1/game.pb.go
+/cmd/api/v1/game_grpc.pb.go

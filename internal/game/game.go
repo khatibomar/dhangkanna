@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
 	"github.com/khatibomar/dhangkanna/internal"
 	"regexp"
 	"strings"
@@ -25,10 +26,8 @@ type Game struct {
 	GameState        int8     `json:"gameState"`
 	Message          string   `json:"message"`
 	Version          int      `json:"version,omitempty"`
-	IsLeader         bool     `json:"isLeader"`
 
-	UpdateSocketChan chan struct{} `json:"-"`
-	mu               sync.Mutex
+	mu *sync.Mutex
 }
 
 func New() *Game {
@@ -37,7 +36,7 @@ func New() *Game {
 		IncorrectGuesses: make([]string, 0),
 		ChancesLeft:      initialChances,
 		GameState:        Start,
-		UpdateSocketChan: make(chan struct{}),
+		mu:               &sync.Mutex{},
 	}
 }
 
@@ -58,8 +57,6 @@ func (g *Game) Update(
 	g.GameState = gameState
 	g.Message = message
 	g.Version = version
-
-	g.UpdateSocketChan <- struct{}{}
 }
 
 func (g *Game) HandleNewLetter(letter string) {
@@ -91,6 +88,27 @@ func (g *Game) Reset() {
 		"",
 		g.Version+1,
 	)
+}
+
+func ConvertGameApiToGame(apiGame *api.Game) Game {
+	g := Game{
+		GuessedCharacter: apiGame.GuessedCharacter,
+		IncorrectGuesses: apiGame.IncorrectGuesses,
+		ChancesLeft:      int(apiGame.ChancesLeft),
+		GameState:        int8(apiGame.GameState),
+		Message:          apiGame.Message,
+		Version:          int(apiGame.Version),
+	}
+
+	if g.GuessedCharacter == nil {
+		g.GuessedCharacter = make([]string, 0)
+	}
+
+	if g.IncorrectGuesses == nil {
+		g.IncorrectGuesses = make([]string, 0)
+	}
+
+	return g
 }
 
 func initializeGuessedCharacter(characterName string) []string {

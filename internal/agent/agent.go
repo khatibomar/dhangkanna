@@ -150,7 +150,8 @@ func (a *Agent) setupDiscovery() error {
 
 func (a *Agent) setupServer() error {
 	serverConfig := &server.Config{
-		Game: a.DistributedGame.Game,
+		Game:        a.DistributedGame.Game,
+		GetServerer: a.DistributedGame,
 	}
 	var opts []grpc.ServerOption
 	var err error
