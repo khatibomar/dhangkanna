@@ -2,7 +2,7 @@ ifeq ($(OS),Windows_NT)
 	EXECUTABLE_BACKEND := dhangkanna_back.exe
 	EXECUTABLE_FRONTEND := dhangkanna_front.exe
 else
-	EXECUTABLE_BACKEND := dhangkanna_back.exe
+	EXECUTABLE_BACKEND := dhangkanna_back
 	EXECUTABLE_FRONTEND := dhangkanna_front
 endif
 

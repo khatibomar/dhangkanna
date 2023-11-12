@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"flag"
 	"fmt"
 	"log"
@@ -10,6 +11,12 @@ import (
 	"os/signal"
 	"syscall"
 )
+
+//go:embed static
+var staticFolder embed.FS
+
+//go:embed game.html
+var gameHTML embed.FS
 
 type serverConfig struct {
 	port int
@@ -27,12 +34,19 @@ func main() {
 }
 
 func serve(cfg *serverConfig, serverLogger *log.Logger) error {
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.FS(staticFolder))
 
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.Handle("/static/", http.StripPrefix("/", fs))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "game.html")
+		content, err := gameHTML.ReadFile("game.html")
+		if err != nil {
+			http.Error(w, "Could not read game.html", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write(content)
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
