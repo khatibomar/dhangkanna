@@ -154,7 +154,7 @@ func (a *Agent) setupDiscovery() error {
 func (a *Agent) setupServer() error {
 	a.logger.Println("setting up server")
 	serverConfig := &server.Config{
-		Game:        a.DistributedGame.Game,
+		Game:        a.DistributedGame,
 		GetServerer: a.DistributedGame,
 	}
 	var opts []grpc.ServerOption

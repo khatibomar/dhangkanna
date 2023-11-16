@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -49,6 +52,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		j, err := json.Marshal(a.DistributedGame.Game)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, _ = io.WriteString(w, string(j))
+	})
+
+	_ = http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", a.Config.RPCPort+1), nil)
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)

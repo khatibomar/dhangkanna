@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/hashicorp/raft"
+	"log"
 )
 
 var _ raft.FSMSnapshot = (*fsmSnapshot)(nil)
@@ -11,6 +12,7 @@ type fsmSnapshot struct {
 }
 
 func (s *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
+	log.Println("Taking a snapshot...")
 	_, err := sink.Write(s.data)
 	if err != nil {
 		if err2 := sink.Cancel(); err2 != nil {
@@ -22,7 +24,7 @@ func (s *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 	if err := sink.Close(); err != nil {
 		return err
 	}
-
+	log.Println("Taking snapshot done, with no errors")
 	return nil
 }
 

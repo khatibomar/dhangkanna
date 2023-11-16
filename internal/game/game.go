@@ -90,6 +90,27 @@ func (g *Game) Reset() {
 	)
 }
 
+func ConvertGameToGameApi(game Game) *api.Game {
+	g := &api.Game{
+		GuessedCharacter: game.GuessedCharacter,
+		IncorrectGuesses: game.IncorrectGuesses,
+		ChancesLeft:      int32(game.ChancesLeft),
+		GameState:        int32(game.GameState),
+		Message:          game.Message,
+		Version:          int32(game.Version),
+	}
+
+	if g.GuessedCharacter == nil {
+		g.GuessedCharacter = make([]string, 0)
+	}
+
+	if g.IncorrectGuesses == nil {
+		g.IncorrectGuesses = make([]string, 0)
+	}
+
+	return g
+}
+
 func ConvertGameApiToGame(apiGame *api.Game) Game {
 	g := Game{
 		GuessedCharacter: apiGame.GuessedCharacter,

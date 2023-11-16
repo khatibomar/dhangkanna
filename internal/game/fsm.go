@@ -1,10 +1,12 @@
 package game
 
 import (
+	"fmt"
 	"github.com/hashicorp/raft"
 	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"log"
 	"sync"
 )
 
@@ -14,7 +16,9 @@ type fsm struct {
 	game *Game
 }
 
-func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
+func (f fsm) Snapshot() (raft.FSMSnapshot, error) {
+	fmt.Println("snapshotting in fsm")
+
 	g := &api.Game{
 		GuessedCharacter: f.game.GuessedCharacter,
 		IncorrectGuesses: f.game.IncorrectGuesses,
@@ -27,11 +31,12 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &fsmSnapshot{data: snapshotData}, nil
 }
 
-func (f *fsm) Restore(snapshot io.ReadCloser) error {
+func (f fsm) Restore(snapshot io.ReadCloser) error {
+	log.Println("restoring in fsm...")
+
 	data, err := io.ReadAll(snapshot)
 	if err != nil {
 		return err
@@ -52,11 +57,12 @@ func (f *fsm) Restore(snapshot io.ReadCloser) error {
 		Version:          int(gameSnapshot.Version),
 		mu:               &sync.Mutex{},
 	}
-
 	return nil
 }
 
-func (f *fsm) Apply(record *raft.Log) interface{} {
+func (f fsm) Apply(record *raft.Log) any {
+	log.Println("Applying the state in fsm...")
+
 	var req api.Game
 	err := proto.Unmarshal(record.Data, &req)
 	if err != nil {
