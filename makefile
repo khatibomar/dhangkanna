@@ -23,8 +23,13 @@ clean:
 	$(if $(filter Windows%,$(OS)),del /Q /F /S /A .\cmd\api\v1\game.pb.go,rm -f ./cmd/api/v1/game.pb.go)
 	$(if $(filter Windows%,$(OS)),del /Q /F /S /A .\cmd\api\v1\game_grpc.pb.go,rm -f ./cmd/api/v1/game_grpc.pb.go)
 
+.PHONY: create-temp
+create-temp:
+	rm -rf /tmp/dhangkanna
+	mkdir /tmp/dhangkanna
+
 .PHONY: build
-build: proto build-frontend build-backend
+build: proto create-temp build-frontend build-backend
 
 PHONY: proto
 proto:

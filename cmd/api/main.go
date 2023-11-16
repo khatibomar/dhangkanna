@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
-	"github.com/boltdb/bolt"
-	"github.com/khatibomar/dhangkanna/internal/agent"
 	"log"
 	"net"
 	"os"
@@ -13,6 +11,9 @@ import (
 	"path"
 	"strings"
 	"syscall"
+
+	"github.com/boltdb/bolt"
+	"github.com/khatibomar/dhangkanna/internal/agent"
 )
 
 var dataDir = path.Join(os.TempDir(), "dhangkanna")
@@ -96,7 +97,7 @@ func removeServerFromDB(addr string) error {
 	err = db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("ServerAddresses"))
 		if bucket == nil {
-			return fmt.Errorf("Bucket not found")
+			return fmt.Errorf("bucket not found")
 		}
 
 		if err := bucket.Delete([]byte(addr)); err != nil {

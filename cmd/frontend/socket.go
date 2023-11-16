@@ -3,18 +3,19 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/boltdb/bolt"
-	"github.com/gorilla/websocket"
-	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
-	"github.com/khatibomar/dhangkanna/internal/client"
-	"github.com/khatibomar/dhangkanna/internal/game"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"strings"
 	"sync"
+
+	"github.com/boltdb/bolt"
+	"github.com/gorilla/websocket"
+	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
+	"github.com/khatibomar/dhangkanna/internal/client"
+	"github.com/khatibomar/dhangkanna/internal/game"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Socket struct {
@@ -37,7 +38,7 @@ func NewSocket(ctx context.Context) (*Socket, error) {
 				return true
 			},
 		},
-		logger:            log.New(log.Writer(), "Socket: ", log.LstdFlags),
+		logger:            log.New(log.Writer(), "Socket: ", log.LstdFlags|log.Lshortfile),
 		sendChannel:       make(chan Event, 1),
 		activeConnections: make(map[*websocket.Conn]struct{}),
 	}
@@ -74,15 +75,12 @@ func (n *Socket) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		err := n.sendGameState(ctx)
 		if err != nil {
-			n.logger.Println("failed to send state")
+			n.logger.Printf("failed to send state: %v", err)
 			return
 		}
 
-		select {
-		case <-ctx.Done():
-			n.logger.Printf("Connection with %v closed.", conn.RemoteAddr())
-			return
-		}
+		<-ctx.Done()
+		n.logger.Printf("Connection with %v closed.", conn.RemoteAddr())
 	}(conn)
 
 	n.logger.Printf("WebSocket connection handler started for %v", conn.RemoteAddr())
