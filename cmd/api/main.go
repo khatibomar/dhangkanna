@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"flag"
 	"fmt"
 	"log"
@@ -39,6 +38,7 @@ func run() error {
 	}
 
 	defer func(addr string) {
+		log.Printf("Removing %s from bucket\n", addr)
 		err := removeServerFromDB(addr)
 		if err != nil {
 			log.Println(err)
@@ -94,7 +94,7 @@ func removeServerFromDB(addr string) error {
 		_ = db.Close()
 	}(db)
 
-	err = db.Update(func(tx *bolt.Tx) error {
+	return db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("ServerAddresses"))
 		if bucket == nil {
 			return fmt.Errorf("bucket not found")
@@ -105,12 +105,6 @@ func removeServerFromDB(addr string) error {
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func storeServerAddress(addr string) error {
@@ -130,9 +124,7 @@ func storeServerAddress(addr string) error {
 		if err != nil {
 			return err
 		}
-		id, _ := bucket.NextSequence()
-		key := itob(id)
-		return bucket.Put(key, []byte(addr))
+		return bucket.Put([]byte(addr), []byte(addr))
 	})
 }
 
@@ -143,10 +135,4 @@ func getRpcAddress(cfg agent.Config) (string, error) {
 	}
 
 	return fmt.Sprintf("%s:%d", host, cfg.RPCPort), nil
-}
-
-func itob(v uint64) []byte {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, v)
-	return b
 }

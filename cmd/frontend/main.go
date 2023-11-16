@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -19,13 +20,20 @@ var staticFolder embed.FS
 var gameHTML embed.FS
 
 type serverConfig struct {
-	port int
+	port        int
+	backendAddr []string
 }
 
 func main() {
 	cfg := &serverConfig{}
 	flag.IntVar(&cfg.port, "port", 4000, "port that socket will run on")
+	var addrs string
+	flag.StringVar(&addrs, "backend-addr", "", "backend addresses are comma seperated, use in case you don't need to auto pick one")
 	flag.Parse()
+
+	if addrs != "" {
+		cfg.backendAddr = strings.Split(addrs, ",")
+	}
 
 	serverLogger := log.New(os.Stdout, "frontend: ", log.LstdFlags|log.Lshortfile)
 	if err := serve(cfg, serverLogger); err != nil {
@@ -52,7 +60,7 @@ func serve(cfg *serverConfig, serverLogger *log.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, err := NewSocket(ctx)
+	n, err := NewSocket(ctx, cfg.backendAddr)
 	if err != nil {
 		return err
 	}
