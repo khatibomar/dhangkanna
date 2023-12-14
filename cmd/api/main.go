@@ -18,6 +18,8 @@ import (
 	"syscall"
 )
 
+var dataDir = path.Join(os.TempDir(), "dhangkanna")
+
 func main() {
 	logger := log.New(os.Stdout, "server: ", log.LstdFlags|log.Lshortfile)
 	if err := run(); err != nil {
@@ -29,24 +31,19 @@ func run() error {
 	cfg := agent.Config{}
 	parse(&cfg)
 
+	_ = os.Mkdir(dataDir, 0666)
+
 	addr, err := getRpcAddress(cfg)
 	if err != nil {
 		return err
 	}
 
-	if cfg.DataDir == "" {
-		cfg.DataDir, err = os.MkdirTemp(os.TempDir(), "dhangkanna")
-		if err != nil {
-			return err
-		}
-	}
-
-	if err := storeServerAddress(addr, cfg.DataDir); err != nil {
+	if err := storeServerAddress(addr); err != nil {
 		return err
 	}
 
 	defer func(addr string) {
-		err := removeServerFromDB(addr, cfg.DataDir)
+		err := removeServerFromDB(addr)
 		log.Printf("Removing %s from bucket\n", addr)
 		if err != nil {
 			log.Println(err)
@@ -104,7 +101,7 @@ func parse(cfg *agent.Config) {
 	}
 }
 
-func removeServerFromDB(addr, dataDir string) error {
+func removeServerFromDB(addr string) error {
 	db, err := bolt.Open(path.Join(dataDir, "serverlist.db"), 0600, nil)
 	if err != nil {
 		return err
@@ -132,7 +129,7 @@ func removeServerFromDB(addr, dataDir string) error {
 	return nil
 }
 
-func storeServerAddress(addr, dataDir string) error {
+func storeServerAddress(addr string) error {
 	db, err := bolt.Open(path.Join(dataDir, "serverlist.db"), 0600, nil)
 	if err != nil {
 		return err
