@@ -21,8 +21,8 @@ type Config struct {
 }
 
 type DistributedGame struct {
+	*Game
 	config Config
-	Game   *Game
 	Raft   *raft.Raft
 	logger *log.Logger
 }
@@ -122,7 +122,7 @@ func (g *DistributedGame) Close() error {
 func (g *DistributedGame) setupRaft(dataDir string) error {
 	g.logger.Println("setting up raft")
 
-	fsm := &fsm{game: g.Game}
+	fsm := fsm{game: g.Game}
 
 	logDir := filepath.Join(dataDir, "raft")
 	if err := os.MkdirAll(logDir, 0755); err != nil {

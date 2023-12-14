@@ -5,15 +5,17 @@ import (
 	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
 	"github.com/khatibomar/dhangkanna/internal/game"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"os"
+	"time"
 )
 
 var _ api.GameServiceServer = (*grpcServer)(nil)
 
 type Config struct {
-	Game        *game.Game
+	Game        *game.DistributedGame
 	GetServerer GetServerer
 }
 
@@ -48,6 +50,20 @@ func (s *grpcServer) Send(_ context.Context, letter *api.Letter) (*emptypb.Empty
 	s.logger.Printf("Received new letter %s", letter)
 	s.Game.HandleNewLetter(letter.Letter)
 
+	g := game.Game{
+		GuessedCharacter: s.Game.GuessedCharacter,
+		IncorrectGuesses: s.Game.IncorrectGuesses,
+		ChancesLeft:      s.Game.ChancesLeft,
+		GameState:        s.Game.GameState,
+		Message:          s.Game.Message,
+		Version:          s.Game.Version,
+	}
+
+	b, err := proto.Marshal(game.ConvertGameToGameApi(g))
+	if err != nil {
+		return &emptypb.Empty{}, err
+	}
+	s.Game.Raft.Apply(b, 5*time.Second)
 	return &emptypb.Empty{}, nil
 }
 

@@ -3,21 +3,23 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/boltdb/bolt"
-	"github.com/gorilla/websocket"
-	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
-	"github.com/khatibomar/dhangkanna/internal/client"
-	"github.com/khatibomar/dhangkanna/internal/game"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"strings"
 	"sync"
+
+	"github.com/boltdb/bolt"
+	"github.com/gorilla/websocket"
+	api "github.com/khatibomar/dhangkanna/cmd/api/v1"
+	"github.com/khatibomar/dhangkanna/internal/client"
+	"github.com/khatibomar/dhangkanna/internal/game"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Socket struct {
+	backendAddrs      []string
 	upgrader          websocket.Upgrader
 	logger            *log.Logger
 	sendChannel       chan Event
@@ -30,16 +32,17 @@ type Event struct {
 	Content any    `json:"content"`
 }
 
-func NewSocket(ctx context.Context) (*Socket, error) {
+func NewSocket(ctx context.Context, backendAddrs []string) (*Socket, error) {
 	n := &Socket{
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
 		},
-		logger:            log.New(log.Writer(), "Socket: ", log.LstdFlags),
+		logger:            log.New(log.Writer(), "Socket: ", log.LstdFlags|log.Lshortfile),
 		sendChannel:       make(chan Event, 1),
 		activeConnections: make(map[*websocket.Conn]struct{}),
+		backendAddrs:      backendAddrs,
 	}
 
 	go n.sendMessages(ctx)
@@ -74,15 +77,12 @@ func (n *Socket) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		err := n.sendGameState(ctx)
 		if err != nil {
-			n.logger.Println("failed to send state")
+			n.logger.Printf("failed to send state: %v", err)
 			return
 		}
 
-		select {
-		case <-ctx.Done():
-			n.logger.Printf("Connection with %v closed.", conn.RemoteAddr())
-			return
-		}
+		<-ctx.Done()
+		n.logger.Printf("Connection with %v closed.", conn.RemoteAddr())
 	}(conn)
 
 	n.logger.Printf("WebSocket connection handler started for %v", conn.RemoteAddr())
@@ -158,7 +158,7 @@ func (n *Socket) sendMessages(ctx context.Context) {
 func (n *Socket) handleNewLetter(ctx context.Context, letter string) error {
 	n.logger.Printf("Handling letter %v", letter)
 
-	c, err := connectToRandomServer()
+	c, err := n.connectToRandomServer()
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (n *Socket) handleNewLetter(ctx context.Context, letter string) error {
 }
 
 func (n *Socket) sendGameState(ctx context.Context) error {
-	c, err := connectToRandomServer()
+	c, err := n.connectToRandomServer()
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func (n *Socket) sendSocketEvent(event Event) {
 }
 
 func (n *Socket) resetGame(ctx context.Context) error {
-	c, err := connectToRandomServer()
+	c, err := n.connectToRandomServer()
 	if err != nil {
 		return err
 	}
@@ -221,10 +221,16 @@ func (n *Socket) resetGame(ctx context.Context) error {
 	return nil
 }
 
-func connectToRandomServer() (api.GameServiceClient, error) {
-	servers, err := getAllServerAddresses()
-	if err != nil {
-		return nil, err
+func (n *Socket) connectToRandomServer() (api.GameServiceClient, error) {
+	var servers []string
+	var err error
+	if len(n.backendAddrs) > 0 {
+		servers = n.backendAddrs
+	} else {
+		servers, err = getAllServerAddresses()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, s := range servers {
@@ -261,7 +267,8 @@ func getAllServerAddresses() ([]string, error) {
 		}
 		c := bucket.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			addresses = append(addresses, string(v))
+			log.Printf("Found server with key/value - %s : %s\n", k, v)
+			addresses = append(addresses, string(k))
 		}
 		return nil
 	})

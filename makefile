@@ -2,7 +2,7 @@ ifeq ($(OS),Windows_NT)
 	EXECUTABLE_BACKEND := dhangkanna_back.exe
 	EXECUTABLE_FRONTEND := dhangkanna_front.exe
 else
-	EXECUTABLE_BACKEND := dhangkanna_back.exe
+	EXECUTABLE_BACKEND := dhangkanna_back
 	EXECUTABLE_FRONTEND := dhangkanna_front
 endif
 
@@ -23,8 +23,13 @@ clean:
 	$(if $(filter Windows%,$(OS)),del /Q /F /S /A .\cmd\api\v1\game.pb.go,rm -f ./cmd/api/v1/game.pb.go)
 	$(if $(filter Windows%,$(OS)),del /Q /F /S /A .\cmd\api\v1\game_grpc.pb.go,rm -f ./cmd/api/v1/game_grpc.pb.go)
 
+.PHONY: create-temp
+create-temp:
+	rm -rf /tmp/dhangkanna
+	mkdir /tmp/dhangkanna
+
 .PHONY: build
-build: proto build-frontend build-backend
+build: proto create-temp build-frontend build-backend
 
 PHONY: proto
 proto:
@@ -34,3 +39,16 @@ proto:
 				--go_opt=paths=source_relative \
 				--go-grpc_opt=paths=source_relative \
 				--proto_path=.
+
+## nodes
+.PHONY: node1
+node1:
+	./$(EXECUTABLE_BACKEND) -bootstrap -data-dir="/tmp/dhangkanna/node1" -node-name="node1"
+
+.PHONY: node2
+node2:
+	./$(EXECUTABLE_BACKEND) -data-dir="/tmp/dhangkanna/node2" -node-name="node2" -bind-addr="127.0.0.1:7001" -rpc-port=7002 -start-join-addrs="127.0.0.1:4001"
+
+.PHONY: node3
+node3:
+	./$(EXECUTABLE_BACKEND) -data-dir="/tmp/dhangkanna/node3" -node-name="node3" -bind-addr="127.0.0.1:8001" -rpc-port=8002 -start-join-addrs="127.0.0.1:4001"
