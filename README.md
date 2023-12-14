@@ -97,9 +97,9 @@ the default port is `4000` and I picked one of the followers to initialize a con
 
 now we can visit `http://localhost:4000` to play the game. As we can see in `GIF` down below the socket is running to simulate the same state across different windows and tabs.
 
-![Animation](https://github.com/khatibomar/dhangkanna/assets/35725554/f960ee8e-7fd1-40c3-beee-3853d6bb9576)
+https://github.com/khatibomar/dhangkanna/assets/35725554/25a36b04-0b9d-4033-a46a-e034afae5231
 
-let's lunch another frontend that will point to a different follower server
+let's launch another frontend that will point to a different follower server
 
 ```
 .\dhangkanna_front.exe -port=5000 -backend-addr="127.0.0.1:7002"
@@ -111,7 +111,7 @@ go to `http://localhost:5000`
 
 as soon we visit the page we can see that the other followers running on port `7002` have also the same state as the leader.
 
-![Animation2](https://github.com/khatibomar/dhangkanna/assets/35725554/61786694-99b4-4e2c-8ad0-e13d5fed2b30)
+https://github.com/khatibomar/dhangkanna/assets/35725554/5fbef3d1-239d-4ed1-b15e-99d7d06853fe
 
 > I am refreshing the page manually to reflect the latest game state because as discussed in Architecture, I don't have a hook to update cross servers.
 
