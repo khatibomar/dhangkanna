@@ -15,8 +15,6 @@ import (
 	"syscall"
 )
 
-var dataDir = path.Join(os.TempDir(), "dhangkanna")
-
 func main() {
 	logger := log.New(os.Stdout, "server: ", log.LstdFlags|log.Lshortfile)
 	if err := run(); err != nil {
@@ -33,12 +31,19 @@ func run() error {
 		return err
 	}
 
-	if err := storeServerAddress(addr); err != nil {
+	if cfg.DataDir == "" {
+		cfg.DataDir, err = os.MkdirTemp(os.TempDir(), "dhangkanna")
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := storeServerAddress(addr, cfg.DataDir); err != nil {
 		return err
 	}
 
 	defer func(addr string) {
-		err := removeServerFromDB(addr)
+		err := removeServerFromDB(addr, cfg.DataDir)
 		if err != nil {
 			log.Println(err)
 		}
@@ -61,7 +66,7 @@ func parse(cfg *agent.Config) {
 		log.Fatal(err)
 	}
 	flag.StringVar(&cfg.DataDir, "data-dir",
-		dataDir,
+		"",
 		"Directory to store log and Raft data.")
 	flag.StringVar(&cfg.NodeName, "node-name", hostname, "Unique server ID.")
 	flag.StringVar(&cfg.BindAddr, "bind-addr",
@@ -84,7 +89,7 @@ func parse(cfg *agent.Config) {
 	}
 }
 
-func removeServerFromDB(addr string) error {
+func removeServerFromDB(addr, dataDir string) error {
 	db, err := bolt.Open(path.Join(dataDir, "serverlist.db"), 0600, nil)
 	if err != nil {
 		return err
@@ -112,7 +117,7 @@ func removeServerFromDB(addr string) error {
 	return nil
 }
 
-func storeServerAddress(addr string) error {
+func storeServerAddress(addr, dataDir string) error {
 	db, err := bolt.Open(path.Join(dataDir, "serverlist.db"), 0600, nil)
 	if err != nil {
 		return err

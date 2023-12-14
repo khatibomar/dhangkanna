@@ -3,6 +3,7 @@ package loadbalance
 import (
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
+	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -32,6 +33,9 @@ func (p *Picker) Build(buildInfo base.PickerBuildInfo) balancer.Picker {
 		}
 		followers = append(followers, sc)
 	}
+	log.Printf("leader: %+v\n", p.leader)
+	log.Printf("followers: %+v\n", p.followers)
+
 	p.followers = followers
 	return p
 }
@@ -51,13 +55,14 @@ func (p *Picker) Pick(info balancer.PickInfo) (
 	if result.SubConn == nil {
 		return result, balancer.ErrNoSubConnAvailable
 	}
+	log.Printf("picked: %+v\n", result)
 	return result, nil
 }
 
 func (p *Picker) nextFollower() balancer.SubConn {
 	cur := atomic.AddUint64(&p.current, uint64(1))
-	len := uint64(len(p.followers))
-	idx := int(cur % len)
+	l := uint64(len(p.followers))
+	idx := int(cur % l)
 	return p.followers[idx]
 }
 
