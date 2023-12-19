@@ -126,3 +126,6 @@ However, to achieve synchronization between different servers, we need to have a
 When a player enters a character the gRPC load balancer will redirect the call to the leader, after that the leader will copy the state to all of the followers, then the webhook will update the frontend for other pages. All frontend updates and initialization will be handled by followers.
 
 > The webhook is not implemented yet, so you need to manually refresh the page to get the latest state.
+
+# Companion blog can be found at
+[https://omarelkhatib.com/posts/building-distributed-game-server-in-go](https://omarelkhatib.com/posts/building-distributed-game-server-in-go/)
